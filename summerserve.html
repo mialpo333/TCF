@@ -790,7 +790,7 @@ const adults = []; // {name, meal}
 const kids = [];   // {name, meal}
 
 function rowHTML(block, idx, label, meals){
-  const opts = meals.map(m=>`<option value="${m}">${m}</option>`).join("");
+  const opts = `<option value="">– kein Essen –</option>` + meals.map(m=>`<option value="${m}">${m}</option>`).join("");
   return `<div class="person" data-block="${block}" data-i="${idx}">
     <div class="pnum">${label}</div>
     <input type="text" class="p-name" placeholder="Name" autocomplete="off">
@@ -799,9 +799,9 @@ function rowHTML(block, idx, label, meals){
 }
 
 function syncArrays(){
-  while(adults.length < counts_ppl.adults) adults.push({name:"",meal:"Fleisch"});
+  while(adults.length < counts_ppl.adults) adults.push({name:"",meal:""});
   while(adults.length > counts_ppl.adults) adults.pop();
-  while(kids.length < counts_ppl.kids) kids.push({name:"",meal:"Fleisch"});
+  while(kids.length < counts_ppl.kids) kids.push({name:"",meal:""});
   while(kids.length > counts_ppl.kids) kids.pop();
 }
 
@@ -811,7 +811,7 @@ function wireRow(row, arr, i, meals){
   nameEl.value=p.name;
   nameEl.addEventListener('input',()=>{ p.name=nameEl.value; });
   const mealEl=row.querySelector('.p-meal');
-  if(!meals.includes(p.meal)) p.meal=meals[0];
+  if(p.meal!=="" && !meals.includes(p.meal)) p.meal="";
   mealEl.value=p.meal;
   mealEl.addEventListener('change',()=>{ p.meal=mealEl.value; });
 }
