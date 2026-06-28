@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TCF Summer Serve · Buddy & Spiele · Demo</title>
+<style>
+  :root{--navy:#0a2a5e;--navy-deep:#061a3d;--yellow:#ffc20e;--yellow-soft:#ffd757;--blue-team:#1c7bd6;--yellow-d:#e0a800;--line:rgba(255,255,255,.14)}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif;background:var(--navy-deep);color:#fff;line-height:1.5}
+  .wrap{max-width:920px;margin:0 auto;min-height:100vh;
+    background:radial-gradient(120% 60% at 85% -10%,rgba(255,194,14,.14),transparent 55%),linear-gradient(180deg,var(--navy),var(--navy-deep))}
+  .top{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:2px solid var(--yellow);position:sticky;top:0;z-index:20;
+    background:var(--navy-deep)}
+  .top .emblem{width:38px;height:38px;flex:0 0 38px}
+  .top h1{font-size:14px;font-weight:800;letter-spacing:1px;line-height:1.1}
+  .top h1 span{color:var(--yellow)}
+  .top .sub{font-size:10px;color:rgba(255,255,255,.6)}
+  .demobadge{margin-left:auto;background:var(--yellow);color:var(--navy-deep);font-size:10px;font-weight:900;padding:4px 9px;border-radius:20px;letter-spacing:1px}
+
+  /* big team total */
+  .totalbar{display:flex;align-items:stretch;gap:0;margin:14px 16px 6px;border-radius:16px;overflow:hidden;
+    box-shadow:0 8px 26px rgba(0,0,0,.35)}
+  .tt{flex:1;padding:14px 16px;display:flex;flex-direction:column;align-items:center;position:relative}
+  .tt.blue{background:linear-gradient(160deg,#1c7bd6,#0e4f93)}
+  .tt.yellow{background:linear-gradient(160deg,#ffce3a,#f0a800);color:var(--navy-deep)}
+  .tt .t{font-size:12px;font-weight:800;letter-spacing:1px;opacity:.92}
+  .tt .v{font-size:40px;font-weight:900;line-height:1}
+  .tt .lead{font-size:10px;font-weight:800;min-height:13px;letter-spacing:.5px}
+  .vsband{display:flex;align-items:center;justify-content:center;background:var(--navy-deep);padding:0 12px;font-weight:900;font-size:13px;color:var(--yellow)}
+
+  .toolbar{display:flex;gap:8px;padding:8px 16px 14px}
+  .btn{border:none;border-radius:11px;font-weight:800;font-family:inherit;cursor:pointer;font-size:14px;padding:12px 16px}
+  .btn.primary{background:var(--yellow);color:var(--navy-deep);flex:1}
+  .btn.ghost{background:rgba(255,255,255,.07);color:#fff;border:1.5px solid var(--line)}
+  .btn:active{transform:translateY(1px)}
+
+  /* board */
+  .boardwrap{padding:0 8px 30px}
+  .board{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:520px}
+  thead th{font-size:11px;letter-spacing:.5px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;
+    padding:10px 10px;text-align:center;white-space:nowrap;position:sticky;top:0}
+  th.pairhead,td.paircell{position:sticky;left:0;z-index:5;background:var(--navy);text-align:left;min-width:168px}
+  thead th.pairhead{z-index:6}
+  tbody td{padding:8px 8px;text-align:center;border-top:1px solid rgba(255,255,255,.06);vertical-align:middle}
+  .paircell{padding:11px 12px !important}
+  .pairnames{display:flex;flex-direction:column;gap:3px}
+  .pn{font-weight:800;font-size:14px;display:flex;align-items:center;gap:7px}
+  .pdot{width:10px;height:10px;border-radius:50%;flex:0 0 10px}
+  .pdot.Blue{background:var(--blue-team)}.pdot.Yellow{background:var(--yellow)}
+  .pvs{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:1px;margin:1px 0 1px 17px}
+
+  .gcell{min-width:96px}
+  .gchip{display:inline-flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;
+    background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;min-width:84px}
+  .gchip .gn{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis}
+  .gchip .gw{font-size:13px;font-weight:900;display:flex;align-items:center;gap:5px}
+  .gchip .gw .wd{width:8px;height:8px;border-radius:50%}
+  .gchip.Blue .gw{color:#7db9ee}.gchip.Yellow .gw{color:var(--yellow)}
+  .gchip.Blue .wd{background:var(--blue-team)}.gchip.Yellow .wd{background:var(--yellow)}
+
+  .addcell .addgame{width:40px;height:40px;border-radius:50%;border:2px dashed var(--line);background:rgba(255,255,255,.04);
+    color:var(--yellow);font-size:22px;font-weight:900;cursor:pointer;line-height:1}
+  .addcell .addgame:active{background:rgba(255,194,14,.15)}
+  .addcell .gfull{font-size:11px;font-weight:800;color:#6fe09a;white-space:nowrap}
+  .gcell .addgame{border:2px dashed var(--line);background:rgba(255,255,255,.04);color:var(--yellow);
+    font-size:13px;font-weight:800;border-radius:10px;padding:11px 12px;cursor:pointer;white-space:nowrap;font-family:inherit}
+  .gcell .addgame:active{background:rgba(255,194,14,.15)}
+  .gchip.locked{cursor:default;opacity:.92}
+  .actioncell{min-width:118px}
+  .endbtn{background:rgba(255,255,255,.07);border:1.5px solid var(--line);color:var(--yellow-soft);
+    font-weight:800;font-size:12px;border-radius:10px;padding:9px 12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .endbtn:active{background:rgba(255,194,14,.15)}
+  .donetag{font-size:11px;font-weight:800;color:rgba(255,255,255,.4);letter-spacing:.5px}
+  .editbtn{background:transparent;border:1.5px solid var(--line);color:rgba(255,255,255,.7);
+    font-weight:800;font-size:12px;border-radius:10px;padding:9px 12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .editbtn:active{background:rgba(255,255,255,.1)}
+  tr.finished{opacity:.6}
+  tr.finished td.paircell{background:var(--navy-deep)}
+
+  .strikecell{min-width:78px}
+  .strikes{display:inline-flex;gap:6px;align-items:center;font-weight:900;font-size:13px}
+  .sb{color:#7db9ee}.sy{color:var(--yellow)}
+
+  .emptyboard{text-align:center;color:rgba(255,255,255,.45);font-size:14px;padding:46px 20px;line-height:1.6}
+
+  /* ===== overlay shared ===== */
+  .overlay{position:fixed;inset:0;background:rgba(4,12,30,.97);display:none;flex-direction:column;align-items:center;justify-content:center;padding:22px;z-index:50}
+  .overlay.show{display:flex}
+
+  /* draw reel */
+  .who{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:3px}.who b{color:#fff;font-size:19px}
+  .vsmini{font-size:12px;letter-spacing:3px;color:var(--yellow-soft);font-weight:800;margin-bottom:14px}
+  .reelbox{position:relative;width:300px;max-width:86vw;height:118px;overflow:hidden;border-radius:16px;border:3px solid var(--yellow);
+    box-shadow:0 0 0 5px rgba(255,194,14,.18),0 16px 44px rgba(0,0,0,.5);background:#fff}
+  .reel{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;will-change:transform}
+  .reel .item{height:118px;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;text-align:center;padding:0 14px}
+  .reel .item.Blue{color:var(--blue-team)}.reel .item.Yellow{color:var(--yellow-d)}
+  .reelmask{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(180deg,rgba(255,255,255,.92),transparent 24%,transparent 76%,rgba(255,255,255,.92))}
+  .reelline{position:absolute;left:0;right:0;top:50%;height:3px;background:var(--yellow);opacity:.5;z-index:3}
+  .spinhint{color:var(--yellow-soft);font-size:13px;font-weight:700;margin:13px 0 2px;min-height:18px}
+  .reveal{text-align:center;display:none}.reveal.show{display:block;animation:pop .45s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  .reveal .me{font-size:18px;font-weight:800}
+  .reveal .vs{font-size:12px;letter-spacing:3px;color:rgba(255,255,255,.6);font-weight:800;margin:6px 0}
+  .reveal .opp{font-size:36px;font-weight:900;line-height:1.05}
+  .reveal .opp.Blue{color:var(--blue-team)}.reveal .opp.Yellow{color:var(--yellow)}
+  .reveal .tag{font-size:12px;color:rgba(255,255,255,.7);margin-top:11px;max-width:300px}
+  .ovbtns{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+  .ovbtn{padding:13px 22px;border-radius:12px;border:none;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit}
+  .ovbtn.primary{background:var(--yellow);color:var(--navy-deep)}
+  .ovbtn.ghost{background:transparent;border:1.5px solid var(--line);color:#fff}
+  .confetti{position:fixed;width:10px;height:14px;z-index:60;pointer-events:none;top:-20px}
+
+  /* sheet (add game / pick winner / search) */
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:#0c2350;border-top:2px solid var(--yellow);
+    border-radius:20px 20px 0 0;padding:18px 18px 26px;z-index:55;transform:translateY(110%);transition:transform .28s;max-width:920px;margin:0 auto}
+  .sheet.show{transform:translateY(0)}
+  .sheet h3{font-size:15px;margin-bottom:14px;text-align:center}
+  .sheet label{font-size:12px;font-weight:700;color:rgba(255,255,255,.8);display:block;margin-bottom:6px}
+  .sheet select,.sheet input{width:100%;padding:12px 14px;border-radius:11px;border:1.5px solid var(--line);
+    background:rgba(255,255,255,.06);color:#fff;font-size:16px;font-family:inherit;margin-bottom:12px}
+  .sheet select:focus,.sheet input:focus{outline:none;border-color:var(--yellow)}
+  .sheet select option{background:#0c2350}
+  .winbtns{display:flex;gap:10px;margin-top:4px}
+  .winbtn{flex:1;padding:15px 10px;border-radius:13px;border:none;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit;line-height:1.2}
+  .winbtn.Blue{background:var(--blue-team);color:#fff}
+  .winbtn.Yellow{background:var(--yellow);color:var(--navy-deep)}
+  .sheetclose{position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:54;display:none}
+  .scrim.show{display:block}
+  .searchlist{max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+  .srow{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.06);border:1.5px solid var(--line);
+    border-radius:11px;padding:12px 14px;cursor:pointer}
+  .srow .nm{font-weight:700;display:flex;align-items:center;gap:8px}
+  .srow.taken{opacity:.4}
+  .modetag{font-size:11px;color:var(--yellow-soft);font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <svg class="emblem" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg"><path fill="#ffffff" d="M311.819 25.7689C321.599 25.4005 330.182 25.7999 339.913 25.8589C350.954 25.9259 360.004 27.6756 370.666 29.2965C424.293 37.0738 474.968 58.6924 517.694 92.0211C537.635 107.504 555.028 124.695 570.603 144.613C605.608 189.21 627.018 242.952 632.271 299.402C632.665 303.972 632.641 308.787 632.892 313.39C633.246 319.872 633.82 326.262 633.693 332.764C633.627 336.174 633.157 339.414 632.978 342.802C628.571 418.884 595.624 490.503 540.719 543.355C504.796 577.765 461.295 603.26 413.719 617.786C392.305 624.148 368.301 627.867 346.044 629.612C342.145 629.917 337.669 630.667 333.828 630.595C326.219 630.18 318.335 631.069 310.765 630.596C301.002 629.986 290.693 629.241 280.993 628.065C214.715 619.753 152.879 590.307 104.65 544.093C95.8791 535.83 87.6017 526.015 79.9819 516.688C39.0696 466.607 13.2359 403.932 11.4719 338.763C8.88117 258.286 38.8877 180.172 94.6897 122.127C151.862 63.109 229.698 28.5673 311.819 25.7689ZM433.985 514.741C459.34 512.332 488.961 514.145 512.716 523.911C519.587 526.736 529.088 532.922 534.5 534.863C542.808 529.464 561.586 505.941 567.668 497.484C589.893 466.579 608.475 427.689 616.409 390.245C620.95 369.01 623.383 347.377 623.673 325.664C623.697 321.801 623.099 317.434 622.931 313.516C622.097 294.08 619.412 274.606 614.43 255.788C612.859 249.855 609.631 237.111 606.261 232.2C599.223 235.379 593.694 239.652 586.197 242.589C547.16 257.884 510.826 251.592 472.693 237.204C453.923 230.122 433.027 218.739 416.236 207.679C410.824 204.114 405.429 200.489 400.098 196.804C396.951 194.63 393.895 192.243 390.629 190.256C347.413 163.963 297.396 145.922 246.391 145.662C240.767 145.633 234.167 145.122 228.629 145.769C149.689 148.503 75.6363 185.797 38.83 256.989C17.9046 297.463 18.7139 329.976 25.3969 373.496C27.8642 389.733 31.8224 405.709 37.2213 421.22C38.4502 424.796 41.5205 433.725 43.3706 436.526C52.518 450.377 65.9083 464.897 78.0358 476.064C107.247 502.962 146.903 519.983 185.231 528.614C188.731 529.402 192.628 530.656 196.013 531.315C202.314 532.542 209.135 533.049 215.456 533.916C237.45 537.118 259.692 538.286 281.901 537.408C298.315 536.72 314.694 535.35 330.994 533.302C344.773 531.612 358.964 529.337 372.503 526.148C388.482 522.386 404.227 518.346 420.542 516.067C424.484 515.48 429.853 515.156 433.985 514.741ZM317.881 145.843C323.466 147.441 328.915 149.543 334.382 151.501C338.51 152.979 342.718 154.3 346.795 155.912C361.911 161.887 376.791 169.26 390.884 177.351C398.848 181.923 406.928 188.309 414.493 193.63C423.58 200.022 433.181 205.913 442.794 211.471C448.27 214.636 454.057 217.232 459.81 219.849C484.141 230.916 512.482 240.685 539.458 240.483C543.233 240.455 547.387 240.348 551.095 239.737C553.553 239.331 555.937 238.578 558.407 238.205C568.869 236.624 579.216 233.958 588.529 228.783C591.167 227.317 600.019 222.896 601.09 220.37C603.33 215.089 584.439 183.003 580.639 176.773C544.799 118.918 490.125 75.1744 425.816 52.9011C391.614 40.8482 353.644 33.8545 317.303 35.1557C310.325 35.3603 300.652 35.55 293.848 36.1969C220.169 43.1624 151.498 76.5529 100.517 130.202C77.5408 154.636 58.9686 182.865 45.6234 213.636C43.6267 218.163 39.2519 228.538 38.6573 233.06L38.9088 233.77C39.6229 233.822 39.6537 233.953 40.3779 233.165C43.9099 229.319 47.1713 224.319 50.3732 220.155C56.3327 212.372 62.8908 205.067 69.9876 198.305C132.615 139.557 221.054 123.195 303.307 141.94C308.187 143.052 313.121 144.816 317.881 145.843ZM495.058 568.429C502.858 563.138 518.403 551.563 524.174 544.616C514.548 536.347 499.183 531.384 487.033 528.196C484.265 527.469 479.758 527.299 476.807 526.904C455.206 524.012 433.226 526.074 411.856 529.767C403.453 531.22 394.619 533.911 386.354 536.027C377.964 537.829 369.581 539.578 361.184 541.367C356.525 542.233 351.629 542.719 346.99 543.644C334.546 546.126 321.793 546.804 309.184 547.873C296.315 548.964 283.753 549.811 270.827 549.498C263.714 549.325 256.482 549.678 249.358 549.392C245.883 549.321 241.553 548.752 238.003 548.499C213.005 546.955 188.249 542.699 164.171 535.805C146.776 530.692 121.746 519.654 106.26 510.39C98.2374 505.514 90.4766 500.219 83.01 494.528C80.3142 492.456 73.1133 485.586 70.1341 485.517C70.7659 488.366 74.5483 493.641 76.2214 496.189C80.3746 502.514 85.5522 508.641 90.3852 514.448C104.191 531.038 119.89 545.322 136.451 559.09C139.35 561.5 143.08 563.521 146.079 565.883C149.675 568.499 153.822 571.622 157.53 573.977C227.176 618.055 311.613 632.293 391.862 613.492C426.655 605.556 465.967 589.294 495.058 568.429Z"/><path fill="#ffffff" d="M331.529 233.278C333.056 233.099 334.185 233.17 335.681 233.242C358.344 234.328 381.264 239.12 399.355 253.651C402.462 256.146 405.69 258.468 408.381 261.492C406.154 264.357 400.338 268.315 397.213 270.803C391.901 275.078 386.635 279.412 381.418 283.803C373.9 290.282 366.618 297.029 359.585 304.032C356.677 306.891 351.209 312.778 348.469 314.964C347.955 314.771 347.437 314.591 346.913 314.427C332.103 309.747 320.08 310.533 306.322 318.006C292.798 325.353 281.908 338.794 277.53 353.606C271.978 371.822 277.366 387.92 285.71 404.221C293.332 419.113 306.806 430.375 322.546 436.135C327.848 438.076 333.194 437.864 338.625 438.235C356.454 439.455 369.888 430.578 384.951 422.504C387.962 427.8 391.192 442.896 393.07 449.252C394.174 453.256 395.576 457.195 396.793 461.162C399.548 470.146 402.791 478.904 406.168 487.667C406.445 488.386 405.894 489.26 405.556 489.889C395.436 498.492 368.613 505.474 355.28 507.411C313.592 513.47 270.174 496.77 240.852 467.221C189.616 415.589 179.954 326.172 233.736 272.537C263.461 242.894 290.34 234.157 331.529 233.278Z"/><path fill="#ffffff" d="M277.153 174.598L277.501 174.99C277.221 176.369 272.855 183.815 271.861 185.787C268.147 193.227 264.627 200.763 261.307 208.387C259.134 213.476 257.08 218.615 255.148 223.801C253.872 227.275 250.19 240.234 248.391 242.493C247.822 243.208 246.43 243.751 245.546 243.898C239.96 244.822 233.728 244.218 228.036 244.589C217.249 245.292 206.65 247.167 196.116 249.502C193.741 250.029 190.563 250.09 188.477 251.39C182.644 255.027 171.189 293.34 169.298 301.243C155.573 358.616 171.51 418.904 198.706 469.838C207.484 486.277 217.932 501.592 227.66 517.441C226.46 517.526 224.548 517.673 223.365 517.544C201.802 515.194 180.548 510.866 159.886 504.27C155.803 502.755 142.523 500.288 140.183 496.665C132.367 484.562 124.242 468.229 119.48 454.612C114.908 442.315 109.533 427.417 106.454 414.486C100.671 390.201 97.2538 363.741 97.2619 338.768C97.355 327.679 99.0675 316.655 99.5874 305.596C99.7209 302.755 102.149 293.149 99.9847 291.794C93.5598 291.17 65.331 319.736 60.1719 325.52C58.1938 327.737 49.1793 340.991 46.3469 339.174C43.968 333.993 44.9247 292.225 44.6552 284.65C44.5842 282.653 44.831 278.48 45.7584 276.695C51.4602 265.721 62.8926 252.747 71.3563 244.142C82.2125 233.22 94.5299 222.108 107.574 213.911C149.194 187.757 197.8 176.617 246.477 174.766C256.494 174.385 267.036 174.604 277.153 174.598Z"/><path fill="#ffffff" d="M418.936 235.3C422.016 235.55 429.543 240.872 432.705 242.625C442.205 247.888 451.97 252.656 461.962 256.911C502.391 273.815 542.264 281.127 585.529 273.745C587.963 273.33 597.193 271.293 598.895 272.202C603.908 279.869 605.684 326.345 604.519 336.701C597.145 341.46 553.767 339.574 542.828 338.876C536.864 338.495 530.8 337.853 524.874 337.085C520.222 336.482 515.59 335.735 510.984 334.846C506.081 333.9 502.582 332.85 497.545 332.784C497.575 336.883 495.601 364.307 497.926 364.952C530.023 373.863 568.058 375.487 600.879 370.821C601.223 376.976 597.981 387.258 596.334 393.672C594.893 399.027 587.002 427.283 583.976 429.519C579.117 433.11 536.075 427.422 528.618 426.085C516.989 424 505.542 421.27 494.051 418.559C492.397 423.404 492.091 428.838 491.526 433.903L489.686 449.796C487.958 464.096 485.505 478.363 483.609 492.642C483.332 494.723 482.964 497.622 481.797 499.374C480.134 499.976 470.29 498.371 467.688 498.169C458.618 497.463 449.849 496.197 440.689 496.31C436.31 496.364 428.124 497.383 424.189 495.919C422.999 493.776 425.875 472.511 426.114 468.547C426.533 464.435 426.303 460.009 426.739 455.922C428.565 438.8 428.825 421.847 428.801 404.639C428.789 396.007 429.342 387.345 429.32 378.607C429.191 358.751 428.327 338.908 426.729 319.116C425.496 303.271 424.481 286.621 422.11 270.942L418.381 246.5C418.073 244.476 416.94 239.053 416.979 237.47C417.399 236.342 417.984 236.047 418.936 235.3Z"/></svg>
+    <div><h1>SUMMER <span>SERVE</span></h1><div class="sub">Buddy & Mini-Spiele</div></div>
+  </div>
+
+  <div class="totalbar">
+    <div class="tt blue"><div class="t">TEAM BLUE</div><div class="v" id="tBlue">0</div><div class="lead" id="lBlue"></div></div>
+    <div class="vsband">VS</div>
+    <div class="tt yellow"><div class="t">TEAM YELLOW</div><div class="v" id="tYellow">0</div><div class="lead" id="lYellow"></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn primary" id="drawBtn">🎡 Neue Auslosung</button>
+  </div>
+
+  <div class="boardwrap">
+    <div class="board">
+      <table id="boardTable">
+        <thead><tr id="headRow"><th class="pairhead">Paarung</th><th>Striche</th></tr></thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+    </div>
+    <div class="emptyboard" id="emptyBoard">Lade Daten…</div>
+  </div>
+</div>
+
+<!-- DRAW OVERLAY -->
+<div class="overlay" id="overlay">
+  <div id="drawStage">
+    <div class="who" id="who" style="text-align:center"></div>
+    <div class="vsmini" style="text-align:center">SUCHT EINEN GEGNER…</div>
+    <div class="reelbox" id="reelbox"><div class="reel" id="reel"></div><div class="reelmask"></div><div class="reelline"></div></div>
+    <div class="spinhint" id="spinhint" style="text-align:center">&nbsp;</div>
+    <div class="reveal" id="reveal">
+      <div class="me" id="rMe"></div><div class="vs">SPIELT GEGEN</div><div class="opp" id="rOpp"></div>
+      <div class="tag">Spielt die Mini-Spiele gegeneinander · jeder Sieg = 1 Strich fürs Team</div>
+    </div>
+    <div class="ovbtns" id="ovbtns" style="display:none"></div>
+  </div>
+</div>
+
+<!-- SCRIM + SHEET -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet">
+  <button class="sheetclose" id="sheetClose">×</button>
+  <div id="sheetBody"></div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbydmpSMC-9Hxf5gRUD7mnK-NabsLOWr0vhN3se3XrWvBELaQaoQ87Rdjova7eYqvnpa/exec";
+let PEOPLE = [];        // from Teilnehmer
+let PRESETS = [];       // game list from Konfig
+let MAX_GAMES = 3;      // from Konfig B1
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const oppTeamOf=t=>t==='Blue'?'Yellow':'Blue';
+
+// STATE
+let pairs=[];      // {id, a, b, games:[{name,winner,winnerTeam}], active}
+
+// a person is BUSY only if they're in an ACTIVE match
+function busyNames(){
+  const s=new Set();
+  pairs.forEach(p=>{ if(p.active){ s.add(p.a.name); s.add(p.b.name); } });
+  return s;
+}
+
+/* ===== totals ===== */
+function totals(){
+  let b=0, y=0;
+  pairs.forEach(p=>p.games.forEach(g=>{ if(g.winnerTeam==='Blue')b++; else if(g.winnerTeam==='Yellow')y++; }));
+  return {b,y};
+}
+function renderTotals(){
+  const t=totals(); $('tBlue').textContent=t.b; $('tYellow').textContent=t.y;
+  $('lBlue').textContent = t.b>t.y?'● führt':''; $('lYellow').textContent = t.y>t.b?'● führt':'';
+  if(t.b===t.y && (t.b||t.y)){ $('lBlue').textContent='Gleichstand'; }
+}
+
+/* ===== board ===== */
+function maxGames(){
+  let m=0;
+  pairs.forEach(p=>{
+    let need=p.games.length;
+    if(p.active && p.games.length<MAX_GAMES) need=p.games.length+1; // room for + Spiel
+    m=Math.max(m,need);
+  });
+  return Math.min(MAX_GAMES, m);
+}
+function renderBoard(){
+  renderTotals();
+  if(!pairs.length){ $('emptyBoard').innerHTML='Noch keine Paarungen.<br>Tippe „🎡 Neue Auslosung" um zu starten.'; }
+  $('emptyBoard').style.display = pairs.length?'none':'block';
+  $('boardTable').style.display = pairs.length?'table':'none';
+  const mg=Math.max(1,maxGames());
+  // sort: active matches first, then finished (most recent first within each)
+  const ordered = pairs.slice().sort((a,b)=>{
+    if(a.active!==b.active) return a.active?-1:1;
+    return 0;
+  });
+  // header
+  let head='<th class="pairhead">Paarung</th>';
+  for(let i=0;i<mg;i++) head+=`<th>Spiel ${i+1}</th>`;
+  head+='<th>Striche</th><th>Aktion</th>';
+  $('headRow').innerHTML=head;
+  // body
+  $('boardBody').innerHTML=ordered.map(p=>{
+    let cells='';
+    for(let i=0;i<mg;i++){
+      const g=p.games[i];
+      if(g){
+        cells+=`<td class="gcell"><div class="gchip ${g.winnerTeam}" data-pair="${p.id}" data-game="${i}">
+          <span class="gn">${esc(g.name)}</span>
+          <span class="gw"><span class="wd"></span>${esc(g.winner)}</span></div></td>`;
+      } else if(p.active && p.games.length<MAX_GAMES && i===p.games.length){
+        cells+=`<td class="gcell"><button class="addgame" data-add="${p.id}">+ Spiel</button></td>`;
+      } else cells+='<td class="gcell"></td>';
+    }
+    const sb=p.games.filter(g=>g.winnerTeam==='Blue').length;
+    const sy=p.games.filter(g=>g.winnerTeam==='Yellow').length;
+    let action = p.active
+      ? `<button class="endbtn" data-end="${p.id}">Spiel beendet</button>`
+      : `<button class="editbtn" data-edit="${p.id}">Bearbeiten</button>`;
+    return `<tr class="${p.active?'':'finished'}">
+      <td class="paircell"><div class="pairnames">
+        <span class="pn"><span class="pdot ${p.a.team}"></span>${esc(p.a.name)}</span>
+        <span class="pvs">gegen</span>
+        <span class="pn"><span class="pdot ${p.b.team}"></span>${esc(p.b.name)}</span>
+      </div></td>
+      ${cells}
+      <td class="strikecell"><span class="strikes"><span class="sb">${sb}</span>·<span class="sy">${sy}</span></span></td>
+      <td class="actioncell">${action}</td>
+    </tr>`;
+  }).join('');
+  // wire
+  document.querySelectorAll('.addgame').forEach(b=>b.addEventListener('click',()=>openAddGame(b.dataset.add)));
+  document.querySelectorAll('.gchip').forEach(c=>{ if(c.dataset.pair) c.addEventListener('click',()=>openEditGame(c.dataset.pair,+c.dataset.game)); });
+  document.querySelectorAll('.endbtn').forEach(b=>b.addEventListener('click',()=>endMatch(b.dataset.end)));
+  document.querySelectorAll('.editbtn').forEach(b=>b.addEventListener('click',()=>openMatchEdit(b.dataset.edit)));
+}
+
+function endMatch(pairId){
+  const p=pairs.find(x=>x.id===pairId); if(!p)return;
+  if(p.games.length===0){
+    if(!confirm('Noch kein Spiel erfasst. Paarung verwerfen?')){ return; }
+    pairs=pairs.filter(x=>x.id!==pairId);
+    renderBoard();
+    api({action:'matchClose', matchId:pairId, discard:true});
+  } else {
+    p.active=false;
+    renderBoard();
+    api({action:'matchClose', matchId:pairId});
+  }
+}
+
+/* ===== draw ===== */
+let cur={name:'',team:'',opp:'',oppTeam:''};
+function openDrawSearch(){
+  const busy=busyNames();
+  showSheet(`<h3>Wen auslosen?</h3>
+    <input id="dsearch" placeholder="Spieler suchen…" autocomplete="off">
+    <div class="searchlist" id="dlist"></div>`);
+  const render=()=>{
+    const q=($('dsearch').value||'').trim().toLowerCase();
+    let list=PEOPLE.slice().sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    if(q) list=list.filter(p=>p.name.toLowerCase().includes(q));
+    $('dlist').innerHTML=list.map(p=>{
+      const taken=busy.has(p.name);
+      return `<div class="srow ${taken?'taken':''}" data-name="${esc(p.name)}" data-team="${p.team}">
+        <span class="nm"><span class="pdot ${p.team}"></span>${esc(p.name)}</span>
+        ${taken?'<span class="modetag">spielt gerade</span>':'<span class="modetag">AUSLOSEN ›</span>'}</div>`;
+    }).join('');
+    $('dlist').querySelectorAll('.srow').forEach(r=>{
+      if(busy.has(r.dataset.name)) return;
+      r.addEventListener('click',()=>{ hideSheet(); startDraw(r.dataset.name,r.dataset.team); });
+    });
+  };
+  $('dsearch').addEventListener('input',render); render();
+  setTimeout(()=>$('dsearch').focus(),200);
+}
+function availableOpp(team){ const busy=busyNames(); return PEOPLE.filter(p=>p.team===oppTeamOf(team) && !busy.has(p.name)); }
+function startDraw(name,team){
+  const pool=availableOpp(team);
+  if(!pool.length){ toastSheet('Kein freier Gegner mehr im Team '+(oppTeamOf(team)==='Blue'?'Blau':'Gelb')); return; }
+  const opp=pool[Math.floor(Math.random()*pool.length)].name;
+  cur={name,team,opp,oppTeam:oppTeamOf(team)};
+  openSpin(name,opp,cur.oppTeam,pool);
+}
+function buildReel(pool,finalName){
+  const reel=$('reel'); reel.style.transition='none'; reel.style.transform='translateY(0)';
+  const names=[]; const N=32;
+  for(let i=0;i<N;i++) names.push(pool[Math.floor(Math.random()*pool.length)].name);
+  names.push(finalName);
+  reel.innerHTML=names.map(n=>`<div class="item ${cur.oppTeam}">${esc(n)}</div>`).join('');
+  return N;
+}
+function openSpin(name,opp,oppTeam,pool){
+  $('overlay').classList.add('show');
+  $('reveal').classList.remove('show'); $('ovbtns').style.display='none'; $('reelbox').style.display='block';
+  document.querySelector('.vsmini').style.display='block';
+  $('who').innerHTML=`<b>${esc(name)}</b>`; $('spinhint').innerHTML='&nbsp;';
+  document.querySelector('.vsmini').textContent='SUCHT EINEN GEGNER…';
+  const fi=buildReel(pool,opp); const reel=$('reel'); const target=fi*118;
+  void reel.offsetWidth;
+  reel.style.transition='transform 3.3s cubic-bezier(.12,.66,.13,1)';
+  reel.style.transform=`translateY(${-target}px)`;
+  setTimeout(()=>landReveal(name,opp,oppTeam),3450);
+}
+function landReveal(name,opp,oppTeam){
+  $('reelbox').style.display='none'; document.querySelector('.vsmini').style.display='none';
+  $('spinhint').textContent='Gegner gefunden!';
+  $('rMe').textContent=name; const o=$('rOpp'); o.textContent=opp; o.className='opp '+oppTeam;
+  $('reveal').classList.add('show'); burst(oppTeam);
+  const box=$('ovbtns'); box.style.display='flex';
+  box.innerHTML='<button class="ovbtn ghost" id="again">Nochmal drehen</button><button class="ovbtn primary" id="accept">Passt! ✓</button>';
+  $('again').addEventListener('click',()=>{ const pool=availableOpp(cur.team);
+    let o2=cur.opp; if(pool.length>1){ while(o2===cur.opp) o2=pool[Math.floor(Math.random()*pool.length)].name; }
+    cur.opp=o2; openSpin(cur.name,o2,cur.oppTeam,pool); });
+  $('accept').addEventListener('click',acceptPair);
+}
+async function acceptPair(){
+  const a={name:cur.name,team:cur.team}, b={name:cur.opp,team:cur.oppTeam};
+  $('overlay').classList.remove('show');
+  // optimistic local row with temp id
+  const tempId='tmp'+Date.now();
+  const pair={id:tempId,a,b,games:[],active:true,pending:true};
+  pairs.push(pair); renderBoard();
+  // create on backend, adopt real MatchID
+  const d=await api({action:'matchCreate', a:a, b:b});
+  if(d && d.ok){ pair.id=d.id; pair.pending=false; renderBoard(); }
+  else {
+    // failed -> remove optimistic row
+    pairs=pairs.filter(x=>x.id!==tempId); renderBoard();
+    toast('Konnte Match nicht speichern: '+((d&&d.error)||'Fehler'));
+  }
+}
+$('overlay').addEventListener('click',e=>{ if(e.target===$('overlay')) $('overlay').classList.remove('show'); });
+
+/* ===== add / edit game ===== */
+let sheetCtx=null;
+function gameSheetHTML(pair,title,selected,excludeNames){
+  const used=new Set(excludeNames||[]);
+  const opts=PRESETS.filter(g=>!used.has(g)||g===selected)
+    .map(g=>`<option value="${esc(g)}" ${g===selected?'selected':''}>${esc(g)}</option>`).join('');
+  return `<h3>${title}</h3>
+    <label>Spiel</label>
+    <select id="gameSel"><option value="">– Spiel wählen –</option>${opts}</select>
+    <label>Wer hat gewonnen?</label>
+    <div class="winbtns">
+      <button class="winbtn ${pair.a.team}" data-w="a">${esc(pair.a.name)}</button>
+      <button class="winbtn ${pair.b.team}" data-w="b">${esc(pair.b.name)}</button>
+    </div>`;
+}
+function openMatchEdit(pairId){
+  const p=pairs.find(x=>x.id===pairId); if(!p)return;
+  // finished-match editor: list games (tap to change/delete) + add if under 3
+  let rows=p.games.map((g,i)=>`<div class="srow" data-gi="${i}">
+      <span class="nm"><span class="pdot ${g.winnerTeam}"></span>${esc(g.name)} – ${esc(g.winner)}</span>
+      <span class="modetag">ÄNDERN ›</span></div>`).join('');
+  let addBtn = p.games.length<MAX_GAMES
+    ? `<button class="ovbtn primary" id="meAdd" style="width:100%;margin-top:12px">+ Spiel hinzufügen</button>` : '';
+  showSheet(`<h3>${esc(p.a.name)} gegen ${esc(p.b.name)}</h3>
+    <div class="searchlist">${rows||'<div style="text-align:center;color:rgba(255,255,255,.5);padding:12px">Keine Spiele.</div>'}</div>
+    ${addBtn}`);
+  document.querySelectorAll('#sheetBody .srow').forEach(r=>r.addEventListener('click',()=>{ hideSheet(); setTimeout(()=>openEditGame(pairId,+r.dataset.gi),60); }));
+  if(p.games.length<MAX_GAMES) $('meAdd').addEventListener('click',()=>{ hideSheet(); setTimeout(()=>openAddGame(pairId),60); });
+}
+
+function openAddGame(pairId){
+  const p=pairs.find(x=>x.id===pairId); if(!p)return;
+  if(p.games.length>=MAX_GAMES) return;
+  if(p.pending){ toast('Match wird noch gespeichert…'); return; }
+  sheetCtx={mode:'add',pairId};
+  const played=p.games.map(g=>g.name);
+  showSheet(gameSheetHTML(p,'Neues Spiel','',played));
+  wireGameSheet(p);
+}
+function openEditGame(pairId,gi){
+  const p=pairs.find(x=>x.id===pairId); if(!p)return; const g=p.games[gi]; if(!g)return;
+  sheetCtx={mode:'edit',pairId,gi};
+  // exclude other games already played in this match (but keep current selectable)
+  const played=p.games.filter((_,i)=>i!==gi).map(x=>x.name);
+  let html=gameSheetHTML(p,'Spiel ändern', g.name, played);
+  html+=`<button class="ovbtn ghost" id="delGame" style="width:100%;margin-top:14px">Spiel löschen</button>`;
+  showSheet(html);
+  wireGameSheet(p);
+  $('delGame').addEventListener('click',()=>{
+    const old=p.games[gi];
+    p.games.splice(gi,1);
+    hideSheet(); renderBoard();
+    if(old) api({action:'matchGame', matchId:pairId, game:old.name, winner:''}); // clear column
+  });
+}
+function wireGameSheet(p){
+  const sel=$('gameSel');
+  document.querySelectorAll('.winbtn').forEach(btn=>btn.addEventListener('click',()=>{
+    const gname = sel.value||'';
+    if(!gname){ toastSheet('Bitte ein Spiel wählen.'); return; }
+    const who = btn.dataset.w==='a'?p.a:p.b;
+    const entry={name:gname,winner:who.name,winnerTeam:who.team};
+    let clearedOld=null;
+    if(sheetCtx.mode==='add') p.games.push(entry);
+    else {
+      const prev=p.games[sheetCtx.gi];
+      if(prev && prev.name!==gname) clearedOld=prev.name; // game changed -> clear old column
+      p.games[sheetCtx.gi]=entry;
+    }
+    if(p.games.length>=MAX_GAMES) p.active=false; // auto-close
+    hideSheet(); renderBoard();
+    // persist: if a different game name replaced an old one, clear the old column first
+    if(clearedOld) api({action:'matchGame', matchId:p.id, game:clearedOld, winner:''});
+    api({action:'matchGame', matchId:p.id, game:gname, winner:who.name});
+  }));
+}
+
+/* ===== sheet plumbing ===== */
+function showSheet(html){ $('sheetBody').innerHTML=html; $('sheet').classList.add('show'); $('scrim').classList.add('show'); }
+function hideSheet(){ $('sheet').classList.remove('show'); $('scrim').classList.remove('show'); }
+function toastSheet(msg){ const h=$('sheetBody'); const d=document.createElement('div'); d.style.cssText='margin-top:10px;color:var(--yellow-soft);font-weight:700;text-align:center;font-size:13px'; d.textContent=msg; h.appendChild(d); }
+$('scrim').addEventListener('click',hideSheet);
+$('sheetClose').addEventListener('click',hideSheet);
+
+/* buttons */
+$('drawBtn').addEventListener('click',openDrawSearch);
+
+/* confetti */
+function burst(team){
+  const colors=team==='Blue'?['#1c7bd6','#fff','#ffc20e']:['#ffc20e','#fff','#1c7bd6'];
+  for(let i=0;i<24;i++){ const c=document.createElement('div'); c.className='confetti';
+    c.style.left=(50+(Math.random()*40-20))+'%'; c.style.background=colors[i%colors.length];
+    document.body.appendChild(c);
+    const dx=(Math.random()*2-1)*180, dy=window.innerHeight*0.7+Math.random()*120, rot=Math.random()*720;
+    c.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${dx}px,${dy}px) rotate(${rot}deg)`,opacity:0}],
+      {duration:1100+Math.random()*700,easing:'cubic-bezier(.2,.6,.3,1)'}).onfinish=()=>c.remove();
+  }
+}
+
+/* ===== backend ===== */
+async function api(payload){
+  try{
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    return await r.json();
+  }catch(e){ toast('Verbindungsfehler'); return {ok:false,error:String(e)}; }
+}
+
+async function loadAll(){
+  try{
+    const r=await fetch(API_URL+'?action=gamesData');
+    const d=await r.json();
+    if(!d.ok) throw new Error(d.error||'Fehler');
+    PEOPLE = d.people||[];
+    PRESETS = d.games||[];
+    MAX_GAMES = d.maxGames||3;
+    // rebuild board from sheet matches
+    pairs = (d.matches||[]).map(m=>({
+      id: m.id,
+      a: m.a, b: m.b,
+      games: (m.games||[]).map(g=>({
+        name: g.name, winner: g.winner,
+        winnerTeam: (g.winner===m.a.name)?m.a.team : (g.winner===m.b.name)?m.b.team : ''
+      })),
+      active: (m.status!=='beendet')
+    }));
+    renderBoard();
+  }catch(e){
+    $('emptyBoard').innerHTML='Konnte Daten nicht laden.<br><small style="opacity:.6">'+esc(String(e))+'</small><br><button class="refreshb" id="retry">↻ Erneut</button>';
+    $('emptyBoard').style.display='block';
+    const rb=$('retry'); if(rb) rb.addEventListener('click',loadAll);
+  }
+}
+
+/* init */
+loadAll();
+</script>
+</body>
+</html>
