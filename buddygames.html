@@ -111,12 +111,13 @@
   .reveal{text-align:center;display:none}.reveal.show{display:block;animation:pop .45s cubic-bezier(.2,1.3,.4,1)}
   @keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
   .reveal .me{font-size:18px;font-weight:800}
+  .reveal .me.Blue{color:var(--blue-team)} .reveal .me.Yellow{color:var(--yellow)}
   .reveal .vs{font-size:12px;letter-spacing:3px;color:rgba(255,255,255,.6);font-weight:800;margin:6px 0}
   .reveal .opp{font-size:36px;font-weight:900;line-height:1.05}
   .reveal .opp.Blue{color:var(--blue-team)}.reveal .opp.Yellow{color:var(--yellow)}
   .reveal .tag{font-size:12px;color:rgba(255,255,255,.7);margin-top:11px;max-width:300px}
-  .ovbtns{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;justify-content:center}
-  .ovbtn{padding:13px 22px;border-radius:12px;border:none;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit}
+  .ovbtns{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+  .ovbtn{padding:12px 18px;border-radius:12px;border:none;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
   .ovbtn.primary{background:var(--yellow);color:var(--navy-deep)}
   .ovbtn.ghost{background:transparent;border:1.5px solid var(--line);color:#fff}
   .confetti{position:fixed;width:10px;height:14px;z-index:60;pointer-events:none;top:-20px}
@@ -144,6 +145,14 @@
   .srow .nm{font-weight:700;display:flex;align-items:center;gap:8px}
   .srow.taken{opacity:.4}
   .modetag{font-size:11px;color:var(--yellow-soft);font-weight:800}
+  .modepick{display:flex;gap:6px;margin-bottom:8px}
+  .modepick .mp{flex:1;padding:9px 4px;border-radius:9px;border:1.5px solid var(--line);background:rgba(255,255,255,.05);
+    color:rgba(255,255,255,.7);font-weight:800;font-size:11px;cursor:pointer;font-family:inherit;line-height:1.2}
+  .modepick .mp.on{background:var(--yellow);color:var(--navy-deep);border-color:var(--yellow)}
+  .modehint{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:10px;min-height:14px;text-align:center}
+  .freecount{font-size:11px;font-weight:800;color:var(--yellow-soft);text-align:center;padding:4px 0 8px;letter-spacing:.3px}
+  .ktag{font-size:9px;font-weight:800;background:rgba(255,194,14,.2);color:var(--yellow-soft);
+    padding:1px 6px;border-radius:10px;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -162,6 +171,8 @@
 
   <div class="toolbar">
     <button class="btn primary" id="drawBtn" style="display:none">🎡 Neue Auslosung</button>
+    <button class="btn primary" id="autoDrawBtn" style="display:none">⚡ Alle auslosen</button>
+    <button class="btn ghost" id="tableauBtn" style="display:none">📋 Tableau</button>
     <button class="btn ghost" id="refreshBtn2">↻ Aktualisieren</button>
   </div>
 
@@ -225,6 +236,8 @@ function busyNames(){
 /* ===== Game Master unlock (long-press OR 3 taps on the header) ===== */
 function applyRole(){
   $('drawBtn').style.display = OP ? 'block' : 'none';
+  $('autoDrawBtn').style.display = OP ? 'block' : 'none';
+  $('tableauBtn').style.display = OP ? 'block' : 'none';
   const b=$('roleBadge');
   b.textContent = OP ? 'Game Master' : 'Gäste-Modus';
   b.classList.toggle('op', OP);
@@ -370,38 +383,243 @@ function endMatch(pairId){
   }
 }
 
+/* ===== bulk auto-draw (category-first, tops up) ===== */
+async function autoDrawAll(){
+  const busy=busyNames();
+  // available people per team, split by category
+  const avail=t=>PEOPLE.filter(p=>p.team===t && !busy.has(p.name));
+  let blue=avail('Blue'), yellow=avail('Yellow');
+  if(!blue.length || !yellow.length){ toast('Nicht genug freie Spieler zum Auslosen.'); return; }
+
+  const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const isKid=p=>(p.typ||'')==='Kind';
+
+  let bKids=shuffle(blue.filter(isKid)), bAd=shuffle(blue.filter(p=>!isKid(p)));
+  let yKids=shuffle(yellow.filter(isKid)), yAd=shuffle(yellow.filter(p=>!isKid(p)));
+
+  const newPairs=[]; // {a,b}
+  const takeMin=(A,B)=>{ const n=Math.min(A.length,B.length); for(let i=0;i<n;i++) newPairs.push({a:A.shift(), b:B.shift()}); };
+
+  // ORDER: children first (kid↔kid, then kid↔adult fallback), then adults, then rest
+  // 1) kid vs kid
+  takeMin(bKids,yKids);
+  // 2) leftover kids paired with adults of the other team (still "children first")
+  takeMin(bKids,yAd);     // blue kids vs yellow adults
+  takeMin(yKids,bAd);     // yellow kids vs blue adults
+  // 3) adult vs adult
+  takeMin(bAd,yAd);
+  // 4) any remaining cross-team — pair what's left
+  let restBlue=[...bKids,...bAd], restYellow=[...yKids,...yAd];
+  shuffle(restBlue); shuffle(restYellow);
+  takeMin(restBlue,restYellow);
+
+  const leftover = restBlue.length+restYellow.length; // people with no opponent at all
+
+  if(!newPairs.length){ toast('Keine neuen Paarungen möglich.'); return; }
+
+  const ok = confirm(`${newPairs.length} neue Paarung(en) auslosen?`+(leftover?`\n${leftover} Person(en) bleiben ohne Gegner (später manuell auslosen).`:''));
+  if(!ok) return;
+
+  // create all on backend, optimistic on board
+  $('autoDrawBtn').disabled=true; $('autoDrawBtn').textContent='⚡ Lost…';
+  let created=0;
+  for(const np of newPairs){
+    const tempId='tmp'+Date.now()+Math.random();
+    pairs.push({id:tempId,a:np.a,b:np.b,games:[],active:true,pending:true});
+    renderBoard();
+    const d=await api({action:'matchCreate', a:{name:np.a.name,team:np.a.team}, b:{name:np.b.name,team:np.b.team}});
+    const pr=pairs.find(x=>x.id===tempId);
+    if(d&&d.ok){ if(pr){ pr.id=d.id; pr.pending=false; } created++; }
+    else { pairs=pairs.filter(x=>x.id!==tempId); }
+    renderBoard();
+  }
+  $('autoDrawBtn').disabled=false; $('autoDrawBtn').textContent='⚡ Alle auslosen';
+  toast(created+' Paarung(en) ausgelost'+(leftover?` · ${leftover} offen`:''));
+  await loadAll(); applyRole();
+}
+
+/* ===== Tableau (printable pairings list) ===== */
+function openTableau(){
+  if(!pairs.length){ toast('Noch keine Paarungen.'); return; }
+  const YEL='#e0a800', BLU='#1c7bd6';
+  const nameCell=(pl)=>{
+    const kid = (typeOf(pl.name)==='Kind') ? ' <span class="ktag">Kind</span>' : '';
+    const col = pl.team==='Yellow'?YEL:BLU;
+    return `<span class="d" style="background:${col}"></span><span class="nm" style="color:${col}">${esc(pl.name)}</span>${kid}`;
+  };
+  const rows=pairs.map((p,i)=>{
+    // always Gelb (Yellow) left, Blau (Blue) right
+    const yellow = p.a.team==='Yellow'?p.a:p.b;
+    const blue   = p.a.team==='Blue'?p.a:p.b;
+    return `<tr>
+      <td class="no">${i+1}</td>
+      <td class="pl">${nameCell(yellow)}</td>
+      <td class="vs">gegen</td>
+      <td class="pl">${nameCell(blue)}</td>
+    </tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8"><title>TCF Summer Serve · Tableau</title>
+  <style>
+    @page{size:A4;margin:14mm}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Trebuchet MS','Segoe UI',sans-serif;color:#0c1733;padding:16px}
+    .h{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ffc20e;padding-bottom:12px;margin-bottom:18px}
+    .h h1{font-size:22px;font-weight:900;color:#0a2a5e;text-transform:uppercase;letter-spacing:.5px}
+    .h h1 span{color:#f0a800}
+    .h .s{font-size:12px;color:#5a6577;font-weight:700;margin-top:2px}
+    table{width:100%;border-collapse:collapse}
+    td{padding:9px 8px;border-bottom:1px solid #e6ebf3;font-size:14px;vertical-align:middle}
+    .no{width:34px;font-weight:900;color:#f0a800;text-align:center}
+    .pl{font-weight:700}
+    .nm{font-weight:800}
+    .ktag{font-size:10px;font-weight:800;background:#fff2cc;color:#b8860b;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle}
+    thead th{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:8px;border-bottom:2px solid #0a2a5e;text-align:left}
+    thead th.hy{color:#d89400} thead th.hb{color:#1c7bd6}
+    thead th.hno,thead th.hvs{border-bottom:2px solid transparent}
+    .vs{color:#8a94a6;font-size:11px;text-align:center;width:52px;letter-spacing:1px}
+    .d{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle}
+    .ft{margin-top:20px;font-size:11px;color:#8a94a6;text-align:center}
+    @media print{ .noprint{display:none} body{padding:0} }
+    .noprint{text-align:center;margin:18px 0}
+    .pbtn{background:#0a2a5e;color:#fff;border:none;padding:11px 26px;border-radius:9px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+  </style></head><body>
+    <div class="h"><div><h1>Tableau · <span>Paarungen</span></h1><div class="s">TCF Summer Serve · 25. Juli 2026</div></div></div>
+    <table>
+      <thead><tr><th class="hno"></th><th class="hy">Team Gelb</th><th class="hvs"></th><th class="hb">Team Blau</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="ft">TCF Summer Serve · Buddy &amp; Mini-Spiele · ${pairs.length} Paarungen</div>
+    <div class="noprint"><button class="pbtn" onclick="window.print()">🖨️ Drucken / Als PDF speichern</button></div>
+  </body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ toast('Bitte Pop-ups erlauben'); return; }
+  w.document.write(html); w.document.close();
+}
+
 /* ===== draw ===== */
 let cur={name:'',team:'',opp:'',oppTeam:''};
+let drawMode='random'; // 'random' | 'category' | 'fixed'
+
+function typeOf(name){ const p=PEOPLE.find(x=>x.name===name); return p?(p.typ||''):''; }
+
 function openDrawSearch(){
   const busy=busyNames();
   showSheet(`<h3>Wen auslosen?</h3>
+    <div class="modepick">
+      <button class="mp ${drawMode==='random'?'on':''}" data-m="random">🎲 Zufällig</button>
+      <button class="mp ${drawMode==='category'?'on':''}" data-m="category">👥 Nach Kategorie</button>
+      <button class="mp ${drawMode==='fixed'?'on':''}" data-m="fixed">🎯 Feste Person</button>
+    </div>
+    <div class="modehint" id="modehint"></div>
     <input id="dsearch" placeholder="Spieler suchen…" autocomplete="off">
     <div class="searchlist" id="dlist"></div>`);
+  const hints={
+    random:'Gegner wird zufällig aus dem anderen Team gelost.',
+    category:'Kind gegen Kind, Erwachsener gegen Erwachsener (wenn möglich).',
+    fixed:'Du wählst beide Spieler selbst (Gegner aus dem anderen Team).'
+  };
   const render=()=>{
+    $('modehint').textContent=hints[drawMode];
     const q=($('dsearch').value||'').trim().toLowerCase();
-    let list=PEOPLE.slice().sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    // free (not busy) first, then busy — alphabetical within each group
+    let list=PEOPLE.slice().sort((a,b)=>{
+      const ba=busy.has(a.name)?1:0, bb=busy.has(b.name)?1:0;
+      if(ba!==bb) return ba-bb; // free first
+      return a.name.localeCompare(b.name,'de');
+    });
     if(q) list=list.filter(p=>p.name.toLowerCase().includes(q));
-    $('dlist').innerHTML=list.map(p=>{
+    const freeCount=PEOPLE.filter(p=>!busy.has(p.name)).length;
+    let out=`<div class="freecount">${freeCount} frei · ${busy.size} spielen</div>`;
+    out+=list.map(p=>{
       const taken=busy.has(p.name);
+      const kidtag=p.typ==='Kind'?' <span class="ktag">Kind</span>':'';
       return `<div class="srow ${taken?'taken':''}" data-name="${esc(p.name)}" data-team="${p.team}">
-        <span class="nm"><span class="pdot ${p.team}"></span>${esc(p.name)}</span>
-        ${taken?'<span class="modetag">spielt gerade</span>':'<span class="modetag">AUSLOSEN ›</span>'}</div>`;
+        <span class="nm"><span class="pdot ${p.team}"></span>${esc(p.name)}${kidtag}</span>
+        ${taken?'<span class="modetag">spielt gerade</span>':'<span class="modetag">'+(drawMode==='fixed'?'WÄHLEN ›':'AUSLOSEN ›')+'</span>'}</div>`;
     }).join('');
+    $('dlist').innerHTML=out;
     $('dlist').querySelectorAll('.srow').forEach(r=>{
       if(busy.has(r.dataset.name)) return;
-      r.addEventListener('click',()=>{ hideSheet(); startDraw(r.dataset.name,r.dataset.team); });
+      r.addEventListener('click',()=>{
+        if(drawMode==='fixed'){ openFixedOpponent(r.dataset.name,r.dataset.team); }
+        else {
+          // check pool BEFORE hiding sheet, so a "no opponent" message can show
+          const pool=poolForDraw(r.dataset.name,r.dataset.team);
+          if(!pool.length){ startDraw(r.dataset.name,r.dataset.team); return; } // shows message, keeps sheet
+          hideSheet(); startDraw(r.dataset.name,r.dataset.team);
+        }
+      });
     });
   };
+  document.querySelectorAll('.mp').forEach(b=>b.addEventListener('click',()=>{
+    drawMode=b.dataset.m;
+    document.querySelectorAll('.mp').forEach(x=>x.classList.toggle('on',x===b));
+    render();
+  }));
   $('dsearch').addEventListener('input',render); render();
   setTimeout(()=>$('dsearch').focus(),200);
 }
+
 function availableOpp(team){ const busy=busyNames(); return PEOPLE.filter(p=>p.team===oppTeamOf(team) && !busy.has(p.name)); }
+
+// category-aware pool: STRICT — only same Typ. Returns [] if none (caller shows message).
+function poolForDraw(name,team){
+  let pool=availableOpp(team);
+  if(drawMode==='category'){
+    const myType=typeOf(name);
+    return pool.filter(p=>(p.typ||'')===myType); // strict: only same category
+  }
+  return pool;
+}
+
 function startDraw(name,team){
-  const pool=availableOpp(team);
-  if(!pool.length){ toastSheet('Kein freier Gegner mehr im Team '+(oppTeamOf(team)==='Blue'?'Blau':'Gelb')); return; }
+  const pool=poolForDraw(name,team);
+  if(!pool.length){
+    if(drawMode==='category'){
+      const myType=typeOf(name);
+      const label = myType==='Kind' ? 'Kinder' : 'Erwachsenen';
+      const otherAvail = availableOpp(team).length;
+      let msg = 'Kein freier Gegner in der Kategorie '+(myType==='Kind'?'Kind':'Erwachsener')+'.';
+      if(otherAvail>0) msg += ' Alle '+label+' des anderen Teams spielen gerade. Wähle „Zufällig" oder „Feste Person".';
+      toastSheet(msg);
+    } else {
+      toastSheet('Kein freier Gegner mehr im Team '+(oppTeamOf(team)==='Blue'?'Blau':'Gelb'));
+    }
+    return;
+  }
   const opp=pool[Math.floor(Math.random()*pool.length)].name;
   cur={name,team,opp,oppTeam:oppTeamOf(team)};
   openSpin(name,opp,cur.oppTeam,pool);
+}
+
+// fixed mode: after picking player A, choose the specific opponent
+function openFixedOpponent(name,team){
+  const busy=busyNames();
+  const oppTeam=oppTeamOf(team);
+  showSheet(`<h3>Gegner für ${esc(name)} wählen</h3>
+    <div class="modehint">Gegner aus Team ${oppTeam==='Blue'?'Blau':'Gelb'}.</div>
+    <input id="fsearch" placeholder="Gegner suchen…" autocomplete="off">
+    <div class="searchlist" id="flist"></div>`);
+  const render=()=>{
+    const q=($('fsearch').value||'').trim().toLowerCase();
+    let list=PEOPLE.filter(p=>p.team===oppTeam && !busy.has(p.name)).sort((a,b)=>a.name.localeCompare(b.name,'de'));
+    if(q) list=list.filter(p=>p.name.toLowerCase().includes(q));
+    if(!list.length){ $('flist').innerHTML='<div class="empty">Kein freier Gegner.</div>'; return; }
+    $('flist').innerHTML=list.map(p=>{
+      const kidtag=p.typ==='Kind'?' <span class="ktag">Kind</span>':'';
+      return `<div class="srow" data-name="${esc(p.name)}" data-team="${p.team}">
+        <span class="nm"><span class="pdot ${p.team}"></span>${esc(p.name)}${kidtag}</span>
+        <span class="modetag">FESTLEGEN ›</span></div>`;
+    }).join('');
+    $('flist').querySelectorAll('.srow').forEach(r=>r.addEventListener('click',()=>{
+      cur={name:name,team:team,opp:r.dataset.name,oppTeam:oppTeam};
+      hideSheet();
+      // fixed = no spin suspense; go straight to confirm/reveal
+      openReveal(name,r.dataset.name,oppTeam);
+    }));
+  };
+  $('fsearch').addEventListener('input',render); render();
+  setTimeout(()=>$('fsearch').focus(),200);
 }
 function buildReel(pool,finalName){
   const reel=$('reel'); reel.style.transition='none'; reel.style.transform='translateY(0)';
@@ -423,17 +641,40 @@ function openSpin(name,opp,oppTeam,pool){
   reel.style.transform=`translateY(${-target}px)`;
   setTimeout(()=>landReveal(name,opp,oppTeam),3450);
 }
+function kidTag(name){ return typeOf(name)==='Kind' ? ' <span class="ktag">Kind</span>' : ''; }
 function landReveal(name,opp,oppTeam){
   $('reelbox').style.display='none'; document.querySelector('.vsmini').style.display='none';
   $('spinhint').textContent='Gegner gefunden!';
-  $('rMe').textContent=name; const o=$('rOpp'); o.textContent=opp; o.className='opp '+oppTeam;
+  const m=$('rMe'); m.innerHTML=esc(name)+kidTag(name); m.className='me '+cur.team;
+  const o=$('rOpp'); o.innerHTML=esc(opp)+kidTag(opp); o.className='opp '+oppTeam;
   $('reveal').classList.add('show'); burst(oppTeam);
   const box=$('ovbtns'); box.style.display='flex';
-  box.innerHTML='<button class="ovbtn ghost" id="again">Nochmal drehen</button><button class="ovbtn primary" id="accept">Passt! ✓</button>';
-  $('again').addEventListener('click',()=>{ const pool=availableOpp(cur.team);
+  box.innerHTML='<button class="ovbtn ghost" id="cancelDraw">Zurück</button><button class="ovbtn ghost" id="again">Nochmal drehen</button><button class="ovbtn primary" id="accept">Passt! ✓</button>';
+  $('cancelDraw').addEventListener('click',cancelDraw);
+  $('again').addEventListener('click',()=>{ const pool=poolForDraw(cur.name,cur.team);
     let o2=cur.opp; if(pool.length>1){ while(o2===cur.opp) o2=pool[Math.floor(Math.random()*pool.length)].name; }
     cur.opp=o2; openSpin(cur.name,o2,cur.oppTeam,pool); });
   $('accept').addEventListener('click',acceptPair);
+}
+// direct reveal for FIXED mode (no spin) — shows overlay with accept + change buttons
+function openReveal(name,opp,oppTeam){
+  $('overlay').classList.add('show');
+  $('reelbox').style.display='none';
+  const vsm=document.querySelector('.vsmini'); if(vsm) vsm.style.display='none';
+  $('spinhint').textContent='Feste Paarung';
+  const m=$('rMe'); m.innerHTML=esc(name)+kidTag(name); m.className='me '+cur.team;
+  const o=$('rOpp'); o.innerHTML=esc(opp)+kidTag(opp); o.className='opp '+oppTeam;
+  $('reveal').classList.add('show'); burst(oppTeam);
+  const box=$('ovbtns'); box.style.display='flex';
+  box.innerHTML='<button class="ovbtn ghost" id="cancelDraw">Zurück</button><button class="ovbtn ghost" id="changeOpp">Anderer Gegner</button><button class="ovbtn primary" id="accept">Passt! ✓</button>';
+  $('cancelDraw').addEventListener('click',cancelDraw);
+  $('changeOpp').addEventListener('click',()=>{ $('overlay').classList.remove('show'); $('reveal').classList.remove('show'); openFixedOpponent(cur.name,cur.team); });
+  $('accept').addEventListener('click',acceptPair);
+}
+function cancelDraw(){
+  $('overlay').classList.remove('show');
+  $('reveal').classList.remove('show');
+  cur={name:'',team:'',opp:'',oppTeam:''};
 }
 async function acceptPair(){
   const a={name:cur.name,team:cur.team}, b={name:cur.opp,team:cur.oppTeam};
@@ -556,6 +797,8 @@ $('sheetClose').addEventListener('click',hideSheet);
 
 /* buttons */
 $('drawBtn').addEventListener('click',openDrawSearch);
+$('autoDrawBtn').addEventListener('click',autoDrawAll);
+$('tableauBtn').addEventListener('click',openTableau);
 $('refreshBtn2').addEventListener('click',()=>loadAll());
 
 /* confetti */
