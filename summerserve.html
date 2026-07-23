@@ -35,6 +35,8 @@
   /* ---- HERO ---- */
   .hero{position:relative;padding:24px 20px 22px;text-align:center;
     border-bottom:3px solid var(--yellow)}
+  .gmbadge{display:inline-block;background:#e8453c;color:#fff;font-weight:900;font-size:10px;
+    letter-spacing:1px;padding:5px 12px;border-radius:20px;margin-bottom:14px;margin-left:6px}
   .badge{display:inline-block;background:var(--yellow);color:var(--navy-deep);
     font-weight:800;font-size:11px;letter-spacing:1.5px;
     padding:5px 12px;border-radius:20px;transform:rotate(-2deg);margin-bottom:14px}
@@ -171,8 +173,9 @@
 <div class="wrap">
 
   <!-- HERO -->
-  <header class="hero">
+  <header class="hero" id="unlockZone">
     <span class="badge">BLUE VS YELLOW</span>
+    <span class="gmbadge" id="gmBadge" style="display:none">GAME MASTER · NACHMELDUNG</span>
     <svg class="wordmark" viewBox="0 8 640 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TCF Summer Serve"><g transform="translate(30.43,27.95) scale(0.26288)"><path
      fill="#fdfdfd"
      d="m 508.199,488.344 c -1.511,-11.768 -4.778,-23.537 -5.254,-34.963 -0.071,-9.767 2.842,-19.764 3.496,-29.389 -0.043,-6.684 -2.023,-11.7 -1.369,-18.552 1.888,-19.784 9.107,-38.764 9.325,-58.68 0.062,-5.571 1.569,-12.602 3.018,-18.03 2.332,-8.734 1.336,-13.209 9.71,-17.621 1.632,-4.595 0.926,-4.583 -2.574,-7.934 -0.342,-5.215 10.466,-35.601 13.435,-41.353 3.757,-7.867 9.749,-15.908 13.1,-23.852 2.354,-5.58 1.534,-11.695 4.728,-17.97 6.757,-13.27 18.199,-22.22 26.545,-33.968 5.214,-7.34 7.337,-18.322 14.277,-24.815 9.882,-10.648 22.774,-20.754 35.243,-28.264 6.788,-4.088 21.855,-20.053 27.913,-21.944 9.779,-3.053 24.297,-9.598 33.97,-12.8639 18.45,-4.8995 40.795,-9.8723 59.833,-10.7369 21.132,-0.9595 47.143,3.102 67.638,8.1057 13.514,4.9751 27.567,9.1021 40.646,15.0931 4.197,1.922 8.761,6.167 12.812,9.322 38.356,29.875 61.228,73.967 67.12,121.902 1.368,11.133 -0.883,21.711 2.933,33.466 0.288,1.367 -0.631,3.589 -1.287,4.813 -7.013,4.604 -31.525,12.366 -40.522,15.009 -0.454,0.133 -4.165,-1.393 -4.847,-1.676 -4.479,0.834 -7.278,5.936 -10.536,6.878 -16.582,4.798 -30.568,11.754 -48.071,9.672 l -1.214,0.779 c -8.081,5.137 -27.066,14.704 -33.176,2.131 -3.142,-6.927 -2.699,-15.479 -3.804,-22.899 -1.422,-9.557 -4.125,-18.319 -7.984,-27.044 -13.285,-30.036 -48.984,-31.887 -75.211,-19.576 -11.074,5.199 -18.46,14.095 -25.625,23.719 -10.747,13.869 -16.003,29.165 -22.104,45.313 -2.113,5.59 -5.486,11.062 -7.633,16.657 -2.931,8.181 -1.618,16.333 -2.369,24.761 -0.326,3.66 -6.16,11.784 -6.533,15.347 -0.893,8.524 -1.141,17.298 -1.97,25.902 -0.749,7.781 -3.015,17.261 -3.336,24.824 0.087,7.713 0.938,15.407 0.919,23.13 -0.011,4.164 -3.562,6.755 -3.283,11.205 0.655,10.41 3.058,20.826 5.592,30.922 0.858,3.414 -0.487,5.456 -1.553,8.671 6.544,24.423 12.88,55.18 36.878,69.091 12.982,7.596 28.504,9.557 42.968,5.429 37.692,-11.097 64.772,-54.934 67.982,-92.278 2.463,-3.271 5.333,-7.486 10.007,-7.854 10.676,-0.84 23.545,-1.796 34.162,-0.676 3.092,0.326 8.704,5.154 12.524,4.768 19.937,-2.013 15.641,-10.788 37.21,1.285 10.402,-2.836 11.415,-2.675 21.965,-0.11 45.535,-25.466 8.447,79.69 3.407,91.223 2.166,0.424 3.279,0.612 5.355,1.327 l 0.88,2.187 c -2.65,6.02 -12.573,22.357 -16.117,28.233 -27.665,45.856 -73.874,89.475 -124.333,108.757 -13.401,5.122 -21.203,-0.08 -31.317,3.684 -0.654,0.185 -1.309,0.362 -1.967,0.53 -55.655,14.228 -114.149,8.381 -162.647,-23.602 -43.927,-28.967 -64.593,-80.531 -76.951,-129.542 -9.931,-26.099 -1.527,-41.084 -2.004,-67.943 z"
@@ -933,8 +936,57 @@ async function loadCounts(){
 }
 loadCounts();
 
+/* ---- Game Master override: allow on-the-spot registration after deadline ---- */
+let GM=false;
+const GM_CODE="2607";
+function applyGM(){
+  const badge=document.getElementById('gmBadge');
+  if(GM){
+    badge.style.display='inline-block';
+    // bring the form back even if closed
+    const form=document.getElementById('regForm'); if(form) form.style.display='block';
+    const foot=document.querySelector('.foot'); if(foot) foot.style.display='block';
+    const live=document.querySelector('.live'); if(live) live.style.display='flex';
+    const pill=document.getElementById('nextpill'); if(pill) pill.style.display='block';
+    document.getElementById('closedScreen').classList.remove('show');
+  } else {
+    badge.style.display='none';
+    checkClosed(); // re-apply closed state if deadline passed
+  }
+}
+(function setupGMUnlock(){
+  const el=document.getElementById('unlockZone'); if(!el) return;
+  el.style.webkitUserSelect='none'; el.style.userSelect='none';
+  let timer=null, fired=false, sx=0, sy=0;
+  const ask=()=>{
+    if(GM){ if(confirm('Game-Master-Modus verlassen?')){ GM=false; applyGM(); } return; }
+    const code=prompt('Game-Master-Code:');
+    if(code===null) return;
+    if(code.trim()===GM_CODE){ GM=true; applyGM(); }
+    else alert('Falscher Code');
+  };
+  const startAt=(x,y)=>{ sx=x; sy=y; fired=false; timer=setTimeout(()=>{ fired=true; ask(); },800); };
+  const moveAt=(x,y)=>{ if(timer && (Math.abs(x-sx)>30||Math.abs(y-sy)>30)){ clearTimeout(timer); timer=null; } };
+  const end=()=>{ if(timer){ clearTimeout(timer); timer=null; } };
+  el.addEventListener('touchstart',e=>{const t=e.touches[0];startAt(t.clientX,t.clientY);},{passive:true});
+  el.addEventListener('touchmove',e=>{const t=e.touches[0];moveAt(t.clientX,t.clientY);},{passive:true});
+  el.addEventListener('touchend',end);
+  el.addEventListener('mousedown',e=>startAt(e.clientX,e.clientY));
+  el.addEventListener('mousemove',e=>{ if(timer) moveAt(e.clientX,e.clientY); });
+  el.addEventListener('mouseup',end);
+  el.addEventListener('mouseleave',end);
+  let taps=0, tapTimer=null;
+  el.addEventListener('click',()=>{
+    if(fired){ fired=false; return; }
+    taps++; clearTimeout(tapTimer);
+    tapTimer=setTimeout(()=>{taps=0;},700);
+    if(taps>=3){ taps=0; clearTimeout(tapTimer); ask(); }
+  });
+})();
+
 /* ---- registration closed after CLOSE_TIME ---- */
 function checkClosed(){
+  if(GM) return;                      // Game Master override: stay open
   if(new Date() < CLOSE_TIME) return; // still open
   // hide everything except header, show closed screen with stats
   const form=document.getElementById('regForm'); if(form) form.style.display='none';
