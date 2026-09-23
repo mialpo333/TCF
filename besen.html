@@ -15,25 +15,26 @@
 </style>
 <script>
 const CONFIG = {
-  // Apps Script Web App URL (leave empty = demo mode, nothing is saved)
-  API_URL: "",
-  // Registration closes automatically (Berlin time)
-  DEADLINE: "2026-10-14T12:00:00+02:00",
+  // Apps Script Web App URL (empty = demo mode, nothing is saved)
+  API_URL: "https://script.google.com/macros/s/AKfycbwjzc4nE3E-tS64-sQu5koBhh9ofbff75JHSBLs8rBRmfO9TDxeQHes6-dhXsQWNYs8Rg/exec",
   // Game Master code (3 taps or long-press on the flyer)
   GM_CODE: "2607",
-  MAX_PERSONS: 20,
   MAX_PER_ITEM: 20
 };
-// key must match MENU in Code.gs
-const MENU = [
-  { key:"bauern",   name:"2 Bauernbratwürste",        side:"mit Kraut",                price:8 },
-  { key:"leber",    name:"Leber- + Griebenwurst",     side:"mit Kraut",                price:8 },
-  { key:"saiten",   name:"2 Saitenwürste",            side:"mit Brot",                 price:5 },
-  { key:"ripple",   name:"Ripple, gekocht",           side:"mit Kraut",                price:8 },
-  { key:"kraeuter", name:"Kräuterkäs-Brot",           side:"",                         price:3 },
-  { key:"schmalz",  name:"Schmalzbrot",               side:"mit Zwiebeln",             price:3 },
-  { key:"gsaelz",   name:"Gsälzbrot",                 side:"mit oder ohne Zwiebeln",   price:3 }
-];
+/* Menu, deadline and display switches come from the Google Sheet
+   (tabs "Menü" + "Einstellungen"). DEMO is only used without API_URL. */
+const DEMO = {
+  menu: [
+    { name:"2 Bauernbratwürste",    side:"mit Kraut",              price:8, group:"Deftiges" },
+    { name:"Leber- + Griebenwurst", side:"mit Kraut",              price:8, group:"Deftiges" },
+    { name:"2 Saitenwürste",        side:"mit Brot",               price:5, group:"Deftiges" },
+    { name:"Ripple, gekocht",       side:"mit Kraut",              price:8, group:"Deftiges" },
+    { name:"Kräuterkäs-Brot",       side:"",                       price:3, group:"Vesperbrote" },
+    { name:"Schmalzbrot",           side:"mit Zwiebeln",           price:3, group:"Vesperbrote" },
+    { name:"Gsälzbrot",             side:"mit oder ohne Zwiebeln", price:3, group:"Vesperbrote" }
+  ],
+  settings: { deadline: new Date("2026-10-10T23:59:00+02:00").getTime(), showTotal:true, showPrices:true, maxPersons:20 }
+};
 </script>
 <style>
 :root{
@@ -127,6 +128,8 @@ input.bad{border-color:var(--check)}
 .menu li:last-child{border-bottom:0}
 .menu .dish{font-weight:700;line-height:1.2}
 .menu .side{display:block;font-weight:400;color:var(--ink-soft);font-size:16px}
+body.no-prices .menu .price{display:none}
+body.no-total .sum b{display:none}
 .menu .price{display:block;font-size:15px;color:var(--wine);font-weight:700;margin-top:1px}
 .menu li.on .dish{color:var(--wine)}
 .menu li.on .stepper{border-color:var(--leaf);background:#fff8ea}
@@ -206,8 +209,17 @@ dialog .row .btn{flex:1}
     <div class="gm-badge">Vor-Ort-Modus</div>
   </div>
 
+  <!-- ============ LOADING / ERROR ============ -->
+  <main class="board screen show" id="scrLoad">
+    <section class="sec" style="padding-bottom:22px">
+      <h1 id="loadTitle">Einen Moment …</h1>
+      <p class="lede" id="loadText">Die Speisekarte wird geladen.</p>
+      <button class="btn ghost" id="retry" type="button" style="display:none;margin-top:14px">Nochmal laden</button>
+    </section>
+  </main>
+
   <!-- ============ FORM ============ -->
-  <main class="board screen show" id="scrForm">
+  <main class="board screen" id="scrForm">
     <form id="form" novalidate>
       <section class="sec">
         <h1>Anmeldung</h1>
@@ -285,37 +297,76 @@ dialog .row .btn{flex:1}
 <script>
 (() => {
   const $ = s => document.querySelector(s);
-  const DEMO = !CONFIG.API_URL;
-  if (DEMO) document.body.classList.add("is-demo");
+  const IS_DEMO = !CONFIG.API_URL;
+  if (IS_DEMO) document.body.classList.add("is-demo");
 
-  const state = { persons:1, qty:Object.fromEntries(MENU.map(m=>[m.key,0])), gm:false, busy:false };
+  let MENU = [], SET = {};
+  const state = { persons:1, qty:[], gm:false, busy:false };
   const eur = n => n.toLocaleString("de-DE") + " €";
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const ul = $("#menu");
+
+  /* ---------- load menu + settings (+ stats) ---------- */
+  async function fetchData(){
+    if (IS_DEMO) {
+      await new Promise(r=>setTimeout(r,300));
+      return { ok:true, menu:DEMO.menu, settings:DEMO.settings,
+               stats:{ regs:0, persons:0, items:Object.fromEntries(DEMO.menu.map(m=>[m.name,0])) } };
+    }
+    const r = await fetch(CONFIG.API_URL, { cache:"no-store" });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || "Serverfehler");
+    return d;
+  }
+
+  async function init(){
+    $("#retry").style.display = "none";
+    $("#loadTitle").textContent = "Einen Moment …";
+    $("#loadText").textContent = "Die Speisekarte wird geladen.";
+    show("scrLoad");
+    try {
+      const d = await fetchData();
+      MENU = d.menu || []; SET = d.settings || {};
+      document.body.classList.toggle("no-prices", !SET.showPrices);
+      document.body.classList.toggle("no-total", !SET.showTotal);
+      state.qty = MENU.map(()=>0);
+      buildMenu(); render();
+      show("scrForm"); applyGate(d.stats);
+    } catch(err) {
+      $("#loadTitle").textContent = "Speisekarte nicht erreichbar";
+      $("#loadText").textContent = "Prüf deine Internetverbindung und lade die Seite neu.";
+      $("#retry").style.display = "";
+    }
+  }
+  $("#retry").addEventListener("click", init);
 
   /* ---------- build menu ---------- */
-  const ul = $("#menu");
-  MENU.forEach((m,i) => {
-    if (i === 0) ul.insertAdjacentHTML("beforeend", `<li class="group">Deftiges</li>`);
-    if (m.price <= 3 && (i === 0 || MENU[i-1].price > 3))
-      ul.insertAdjacentHTML("beforeend", `<li class="group">Vesperbrote</li>`);
-    ul.insertAdjacentHTML("beforeend", `
-      <li data-k="${m.key}">
-        <div><span class="dish">${m.name}</span>${m.side ? `<span class="side">${m.side}</span>`:""}
-          <span class="price">${eur(m.price)}</span></div>
-        <div class="stepper" role="group" aria-label="${m.name}">
-          <button type="button" data-k="${m.key}" data-d="-1" aria-label="${m.name} weniger">−</button>
-          <output aria-live="polite">0</output>
-          <button type="button" data-k="${m.key}" data-d="1" aria-label="${m.name} mehr">+</button>
-        </div>
-      </li>`);
-  });
+  function buildMenu(){
+    ul.innerHTML = ""; let lastGroup = null;
+    MENU.forEach((m,i) => {
+      if (m.group && m.group !== lastGroup) ul.insertAdjacentHTML("beforeend", `<li class="group">${esc(m.group)}</li>`);
+      lastGroup = m.group;
+      ul.insertAdjacentHTML("beforeend", `
+        <li data-i="${i}">
+          <div><span class="dish">${esc(m.name)}</span>${m.side ? `<span class="side">${esc(m.side)}</span>`:""}
+            <span class="price">${eur(m.price)}</span></div>
+          <div class="stepper" role="group" aria-label="${esc(m.name)}">
+            <button type="button" data-i="${i}" data-d="-1" aria-label="${esc(m.name)} weniger">−</button>
+            <output aria-live="polite">0</output>
+            <button type="button" data-i="${i}" data-d="1" aria-label="${esc(m.name)} mehr">+</button>
+          </div>
+        </li>`);
+    });
+  }
 
   function render(){
+    const maxP = SET.maxPersons || 20;
     $("#persons").textContent = state.persons;
     const [pm,pp] = document.querySelectorAll("[data-p]");
-    pm.disabled = state.persons <= 1; pp.disabled = state.persons >= CONFIG.MAX_PERSONS;
+    pm.disabled = state.persons <= 1; pp.disabled = state.persons >= maxP;
     let total = 0, items = 0;
-    MENU.forEach(m => {
-      const q = state.qty[m.key], li = ul.querySelector(`li[data-k="${m.key}"]`);
+    MENU.forEach((m,i) => {
+      const q = state.qty[i], li = ul.querySelector(`li[data-i="${i}"]`);
       li.querySelector("output").textContent = q;
       li.classList.toggle("on", q > 0);
       const [minus, plus] = li.querySelectorAll("button");
@@ -323,18 +374,19 @@ dialog .row .btn{flex:1}
       total += q * m.price; items += q;
     });
     $("#sum").textContent = eur(total);
-    $("#sumLbl").textContent = items ? `${items} ${items===1?"Gericht":"Gerichte"}, zahlbar vor Ort` : "Keine Vorbestellung";
+    const n = `${items} ${items===1?"Gericht":"Gerichte"}`;
+    $("#sumLbl").textContent = !items ? "Keine Vorbestellung" : SET.showTotal ? `${n}, zahlbar vor Ort` : `${n} vorbestellt`;
     $("#noneNote").style.display = items ? "none" : "block";
   }
 
   document.addEventListener("click", e => {
     const b = e.target.closest("button");
     if (!b) return;
-    if (b.dataset.p) { state.persons = Math.min(CONFIG.MAX_PERSONS, Math.max(1, state.persons + +b.dataset.p)); render(); }
-    if (b.dataset.k) { const k=b.dataset.k; state.qty[k] = Math.min(CONFIG.MAX_PER_ITEM, Math.max(0, state.qty[k] + +b.dataset.d)); render(); }
+    if (b.dataset.p) { state.persons = Math.min(SET.maxPersons||20, Math.max(1, state.persons + +b.dataset.p)); render(); }
+    if (b.dataset.i !== undefined && b.dataset.d) { const i=+b.dataset.i; state.qty[i] = Math.min(CONFIG.MAX_PER_ITEM, Math.max(0, state.qty[i] + +b.dataset.d)); render(); }
   });
 
-  function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),3200); }
+  function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),3600); }
 
   function show(id){
     document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("show", s.id===id));
@@ -348,11 +400,12 @@ dialog .row .btn{flex:1}
     if (name.length < 2) { nameEl.classList.add("bad"); nameEl.focus(); nameEl.scrollIntoView({block:"center",behavior:"smooth"}); toast("Bitte gib deinen Namen ein."); return; }
     nameEl.classList.remove("bad");
 
-    const payload = { name, persons:state.persons, items:{...state.qty}, source: state.gm ? "vor Ort" : "online" };
+    const items = {}; MENU.forEach((m,i) => { if (state.qty[i]) items[m.name] = state.qty[i]; });
+    const payload = { name, persons:state.persons, items, source: state.gm ? "vor Ort" : "online" };
     state.busy = true; const btn=$("#submit"); btn.disabled = true; btn.textContent = "Sende …";
     try {
       let res;
-      if (DEMO) { await new Promise(r=>setTimeout(r,700)); res = { ok:true, total: MENU.reduce((s,m)=>s+state.qty[m.key]*m.price,0) }; }
+      if (IS_DEMO) { await new Promise(r=>setTimeout(r,700)); res = { ok:true, total: MENU.reduce((s,m,i)=>s+state.qty[i]*m.price,0) }; }
       else {
         const r = await fetch(CONFIG.API_URL, { method:"POST", body:JSON.stringify(payload) }); // text/plain → no CORS preflight
         res = await r.json();
@@ -360,7 +413,7 @@ dialog .row .btn{flex:1}
       if (!res.ok) throw new Error(res.error || "Unbekannter Fehler");
       done(payload, res.total);
     } catch(err) {
-      toast("Anmeldung nicht gesendet: " + err.message + ". Bitte nochmal tippen.");
+      toast("Anmeldung nicht gesendet: " + err.message + ".");
     } finally {
       state.busy = false; btn.disabled = false; btn.textContent = "Anmelden";
     }
@@ -371,32 +424,38 @@ dialog .row .btn{flex:1}
     $("#doneTitle").textContent = p.persons > 1 ? "Ihr seid dabei" : "Du bist dabei";
     $("#doneText").textContent = `Danke, ${first}! Wir sehen uns am Samstag, 17. Oktober ab 16 Uhr.`;
     let h = `<div><span>Personen</span><b>${p.persons}</b></div>`;
-    MENU.forEach(m => { if (p.items[m.key]) h += `<div><span>${p.items[m.key]} × ${m.name.replace(/^2 /,'')}${/^2 /.test(m.name)?' (je 2)':''}</span><span>${eur(p.items[m.key]*m.price)}</span></div>`; });
-    h += total ? `<div class="tot"><span>Summe (vor Ort)</span><span>${eur(total)}</span></div>` : `<div><span>Essen</span><span>ohne Vorbestellung</span></div>`;
+    MENU.forEach(m => {
+      const q = p.items[m.name]; if (!q) return;
+      const label = esc(m.name.replace(/^2 /,'')) + (/^2 /.test(m.name) ? ' (je 2)' : '');
+      h += `<div><span>${q} × ${label}</span>${SET.showTotal ? `<span>${eur(q*m.price)}</span>` : ""}</div>`;
+    });
+    if (!Object.keys(p.items).length) h += `<div><span>Essen</span><span>ohne Vorbestellung</span></div>`;
+    else if (SET.showTotal) h += `<div class="tot"><span>Summe (vor Ort)</span><span>${eur(total)}</span></div>`;
     $("#recap").innerHTML = h;
     const s = $("#stamp"); s.classList.remove("pop"); void s.offsetWidth; s.classList.add("pop");
     show("scrDone"); window.scrollTo({top:$("#scrDone").offsetTop - 60, behavior:"smooth"});
   }
 
   $("#again").addEventListener("click", () => {
-    $("#name").value = ""; state.persons = 1; MENU.forEach(m=>state.qty[m.key]=0); render();
+    $("#name").value = ""; state.persons = 1; state.qty = MENU.map(()=>0); render();
     show("scrForm"); applyGate(); $("#name").focus();
   });
 
   /* ---------- deadline + stats ---------- */
-  const isClosed = () => Date.now() >= new Date(CONFIG.DEADLINE).getTime();
+  const isClosed = () => SET.deadline && Date.now() >= SET.deadline;
 
-  async function loadStats(){
-    let d;
-    if (DEMO) d = { regs:0, persons:0, items:Object.fromEntries(MENU.map(m=>[m.key,0])) };
-    else { try { d = await (await fetch(CONFIG.API_URL)).json(); } catch { return; } }
+  function paintStats(d){
     $("#stRegs").textContent = d.regs; $("#stPers").textContent = d.persons;
-    $("#kitchen").innerHTML = MENU.map(m => `<li><span>${m.name}</span><b>${(d.items||{})[m.key]||0}</b></li>`).join("");
+    $("#kitchen").innerHTML = MENU.map(m => `<li><span>${esc(m.name)}</span><b>${(d.items||{})[m.name]||0}</b></li>`).join("");
   }
 
-  function applyGate(){
-    if (isClosed() && !state.gm) { show("scrClosed"); loadStats(); }
-    else if ($("#scrClosed").classList.contains("show")) show("scrForm");
+  async function applyGate(stats){
+    if (!MENU.length && !$("#scrLoad").classList.contains("show")) return;
+    if (isClosed() && !state.gm) {
+      if (!$("#scrClosed").classList.contains("show") && !$("#scrDone").classList.contains("show")) show("scrClosed");
+      if (stats) paintStats(stats);
+      else { try { const d = await fetchData(); paintStats(d.stats); } catch {} }
+    } else if ($("#scrClosed").classList.contains("show")) show("scrForm");
   }
 
   /* ---------- Game Master: 3 taps or long-press on flyer ---------- */
@@ -417,8 +476,8 @@ dialog .row .btn{flex:1}
   };
   $("#gmCode").addEventListener("keydown", e => { if (e.key==="Enter") $("#gmOk").click(); });
 
-  render(); applyGate();
-  setInterval(applyGate, 30000);
+  init();
+  setInterval(() => { if (!$("#scrLoad").classList.contains("show")) applyGate(); }, 60000);
 })();
 </script>
 </body>
