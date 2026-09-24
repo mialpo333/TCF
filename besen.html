@@ -22,7 +22,8 @@ const CONFIG = {
   MAX_PER_ITEM: 20
 };
 /* Menu, deadline and display switches come from the Google Sheet
-   (tabs "Menü" + "Einstellungen"). DEMO is only used without API_URL. */
+   (tabs "Menü" + "Einstellungen"). DEMO is shown instantly on first visit (and used as demo without API_URL);
+   the live Sheet data replaces it in the background within a few seconds. */
 const DEMO = {
   menu: [
     { name:"2 Bauernbratwürste",    side:"mit Kraut",              price:8, group:"Deftiges" },
@@ -307,38 +308,49 @@ dialog .row .btn{flex:1}
   const ul = $("#menu");
 
   /* ---------- load menu + settings (+ stats) ---------- */
-  async function fetchData(){
+  async function fetchData(withStats){
     if (IS_DEMO) {
       await new Promise(r=>setTimeout(r,300));
       return { ok:true, menu:DEMO.menu, settings:DEMO.settings,
                stats:{ regs:0, persons:0, items:Object.fromEntries(DEMO.menu.map(m=>[m.name,0])) } };
     }
-    const r = await fetch(CONFIG.API_URL, { cache:"no-store" });
+    const r = await fetch(CONFIG.API_URL + (withStats ? "?stats=1" : ""), { cache:"no-store" });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || "Serverfehler");
     return d;
   }
 
-  async function init(){
-    $("#retry").style.display = "none";
-    $("#loadTitle").textContent = "Einen Moment …";
-    $("#loadText").textContent = "Die Speisekarte wird geladen.";
-    show("scrLoad");
-    try {
-      const d = await fetchData();
-      MENU = d.menu || []; SET = d.settings || {};
-      document.body.classList.toggle("no-prices", !SET.showPrices);
-      document.body.classList.toggle("no-total", !SET.showTotal);
-      state.qty = MENU.map(()=>0);
-      buildMenu(); render();
-      show("scrForm"); applyGate(d.stats);
-    } catch(err) {
-      $("#loadTitle").textContent = "Speisekarte nicht erreichbar";
-      $("#loadText").textContent = "Prüf deine Internetverbindung und lade die Seite neu.";
-      $("#retry").style.display = "";
-    }
+  /* last good Sheet data, so repeat visits start with the real menu */
+  const CACHE_KEY = "tcfBesenMenu";
+  const readCache = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } };
+  const writeCache = d => { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ menu:d.menu, settings:d.settings })); } catch {} };
+
+  function applyData(menu, settings){
+    // keep what the user already tapped (matched by dish name)
+    const prev = {}; MENU.forEach((m,i) => prev[m.name] = state.qty[i] || 0);
+    MENU = menu || []; SET = settings || {};
+    document.body.classList.toggle("no-prices", !SET.showPrices);
+    document.body.classList.toggle("no-total", !SET.showTotal);
+    state.qty = MENU.map(m => prev[m.name] || 0);
+    buildMenu(); render();
   }
-  $("#retry").addEventListener("click", init);
+
+  let ready = Promise.resolve(true);   // resolves when live Sheet data has arrived
+  function init(){
+    // 1) show the form immediately from cache (or built-in defaults)
+    const start = readCache() || DEMO;
+    applyData(start.menu, start.settings);
+    show("scrForm"); applyGate();
+    if (IS_DEMO) return;
+    // 2) refresh from the Sheet in the background
+    const shown = JSON.stringify({ menu:MENU, settings:SET });
+    ready = fetchData(false).then(d => {
+      writeCache(d);
+      if (JSON.stringify({ menu:d.menu, settings:d.settings }) !== shown) { applyData(d.menu, d.settings); applyGate(); }
+      return true;
+    }).catch(() => false);
+  }
+  $("#retry").addEventListener("click", () => location.reload());
 
   /* ---------- build menu ---------- */
   function buildMenu(){
@@ -400,9 +412,13 @@ dialog .row .btn{flex:1}
     if (name.length < 2) { nameEl.classList.add("bad"); nameEl.focus(); nameEl.scrollIntoView({block:"center",behavior:"smooth"}); toast("Bitte gib deinen Namen ein."); return; }
     nameEl.classList.remove("bad");
 
+    state.busy = true; const btn=$("#submit"); btn.disabled = true; btn.textContent = "Sende …";
+    if (!(await ready)) {                      // background load failed – try once more now
+      ready = fetchData(false).then(d => { writeCache(d); applyData(d.menu, d.settings); return true; }).catch(() => false);
+      if (!(await ready)) { toast("Keine Verbindung zum Server. Bitte nochmal tippen."); state.busy=false; btn.disabled=false; btn.textContent="Anmelden"; return; }
+    }
     const items = {}; MENU.forEach((m,i) => { if (state.qty[i]) items[m.name] = state.qty[i]; });
     const payload = { name, persons:state.persons, items, source: state.gm ? "vor Ort" : "online" };
-    state.busy = true; const btn=$("#submit"); btn.disabled = true; btn.textContent = "Sende …";
     try {
       let res;
       if (IS_DEMO) { await new Promise(r=>setTimeout(r,700)); res = { ok:true, total: MENU.reduce((s,m,i)=>s+state.qty[i]*m.price,0) }; }
@@ -450,11 +466,10 @@ dialog .row .btn{flex:1}
   }
 
   async function applyGate(stats){
-    if (!MENU.length && !$("#scrLoad").classList.contains("show")) return;
     if (isClosed() && !state.gm) {
       if (!$("#scrClosed").classList.contains("show") && !$("#scrDone").classList.contains("show")) show("scrClosed");
       if (stats) paintStats(stats);
-      else { try { const d = await fetchData(); paintStats(d.stats); } catch {} }
+      else { try { const d = await fetchData(true); paintStats(d.stats); } catch {} }
     } else if ($("#scrClosed").classList.contains("show")) show("scrForm");
   }
 
