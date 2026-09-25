@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hallenbelegung Winter 2026/27 – TC Freiberg</title>
+<style>
+:root{
+  --bg:#EEF2EF; --surface:#FFFFFF; --ink:#13233A; --muted:#5E6E7A; --line:#D5DDD8;
+  --court:#2F6B4F; --court-soft:#DCE9E1; --ball:#D9EA3A; --ball-ink:#13233A;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1A17; --surface:#16241F; --ink:#E6EEEA; --muted:#94A69E; --line:#26382F;
+    --court:#6FB892; --court-soft:#1E3329; --ball:#D9EA3A; --ball-ink:#13233A; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1A17; --surface:#16241F; --ink:#E6EEEA; --muted:#94A69E; --line:#26382F;
+  --court:#6FB892; --court-soft:#1E3329; --ball:#D9EA3A; --ball-ink:#13233A; color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:28px 18px 48px}
+h1{font:700 clamp(2rem,6vw,2.9rem)/1 "Bahnschrift","Roboto Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;margin:0 0 6px;letter-spacing:.2px}
+.sub{color:var(--muted);margin:0 0 22px}
+
+/* next match: the one bold element – a court */
+.next{position:relative;background:var(--court);color:#fff;border-radius:14px;padding:20px 22px 22px;margin-bottom:26px;overflow:hidden}
+.next::before{content:"";position:absolute;inset:10px;border:2px solid rgba(255,255,255,.35);border-radius:6px;pointer-events:none}
+.next::after{content:"";position:absolute;top:10px;bottom:10px;left:62%;border-left:2px solid rgba(255,255,255,.35)}
+.next .lbl{position:relative;font-weight:600;font-size:.95rem;opacity:.9}
+.next .when{position:relative;font:700 clamp(1.7rem,5vw,2.3rem)/1.1 "Bahnschrift","Roboto Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;margin:6px 0 4px}
+.next .who{position:relative;font-size:1.1rem;font-weight:600}
+.next .lg{position:relative;opacity:.85;font-size:.95rem}
+.next .ball{position:absolute;right:22px;top:20px;width:30px;height:30px;border-radius:50%;background:var(--ball);box-shadow:inset -4px -4px 0 rgba(0,0,0,.12)}
+
+.filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;scrollbar-width:thin}
+.chip{flex:0 0 auto;font:600 .95rem system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 13px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible,.toggle input:focus-visible{outline:3px solid var(--court);outline-offset:2px}
+.toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.95rem;margin:4px 0 18px}
+.count{color:var(--muted);font-size:.95rem;margin:0 0 8px}
+
+h2{font:600 1.35rem/1.2 "Bahnschrift","Roboto Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;margin:26px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+ul{list-style:none;margin:0;padding:0}
+li.m{display:grid;grid-template-columns:max-content 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);align-items:start}
+.d{font-family:"Bahnschrift","Roboto Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;line-height:1.1;white-space:nowrap;min-width:64px}
+.d .day{display:block;font-size:.95rem;color:var(--muted);font-weight:500}
+.d .num{display:inline-block;font-size:1.5rem;font-weight:700;padding:1px 4px;margin-left:-4px;border-radius:4px}
+.d .tm{display:block;width:max-content;margin-top:5px;font-size:.95rem;font-weight:600;background:var(--court-soft);color:var(--court);padding:2px 6px;border-radius:4px}
+.teams{font-weight:600;font-size:1.05rem}
+.teams .tcf{color:var(--court)}
+.meta{color:var(--muted);font-size:.93rem}
+.tag{display:inline-block;font-size:.8rem;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:0 6px;margin-left:6px;color:var(--muted);vertical-align:1px}
+li.past{opacity:.45}
+li.isnext .d .num{background:var(--ball);color:var(--ball-ink)}
+.empty{padding:20px 0;color:var(--muted)}
+footer{margin-top:34px;color:var(--muted);font-size:.88rem}
+footer a{color:var(--court)}
+@media (max-width:520px){
+  .wrap{padding:20px 14px 40px}
+  li.m{grid-template-columns:1fr;gap:4px;padding:12px 0}
+  .d{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .d .day{display:inline;font-size:1rem}
+  .d .num{font-size:1.2rem;margin-left:0}
+  .d .tm{display:inline-block;margin-top:0;font-size:.9rem}
+  .teams{font-size:1rem;line-height:1.35}
+  .meta{font-size:.88rem}
+  h2{font-size:1.2rem;margin-top:22px}
+  .next{padding:16px 18px 18px}
+}
+
+.acts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.acts a,.acts button{font:600 .9rem/1.3 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--court);background:none;border:0;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.acts a:focus-visible,.acts button:focus-visible,.teambar a:focus-visible,.btn:focus-visible{outline:3px solid var(--court);outline-offset:2px;border-radius:3px}
+li.past{opacity:1}
+li.past .d,li.past .teams,li.past .meta{opacity:.5}
+.teambar{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 14px}
+.teambar p{margin:0 0 10px;font-size:.93rem;color:var(--muted)}
+.btn{font:600 1rem system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--court);color:#fff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;margin-right:12px}
+.teambar a{color:var(--court);font-weight:600;font-size:.95rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Hallenbelegung Winter 2026/27</h1>
+  <p class="sub">Verbandsspiele der WTB-Winterhallenrunde in der Tennishalle des TC Freiberg, Wasenstr. 37-1. Die Halle ist zu diesen Zeiten belegt.</p>
+
+  <section class="next" id="next" aria-live="polite"></section>
+
+  <div class="filters" role="group" aria-label="Mannschaft auswählen" id="filters"></div>
+  <label class="toggle"><input type="checkbox" id="hidePast" checked> Vergangene Spiele ausblenden</label>
+  <div class="teambar" id="teambar" hidden></div>
+  <p class="count" id="count"></p>
+  <div id="list"></div>
+
+  <footer>
+    Quelle: <a href="https://www.wtb-tennis.de/spielbetrieb/hallenplan.html?tx_nuportalrs_courthall%5BcourtHallName%5D=TC%20Freiberg&cHash=f5887c47a9d5718e1bfb2fbded2e2899" target="_blank" rel="noopener">WTB-Hallenplan TC Freiberg</a>, Stand 25.09.2026. Maßgeblich sind die Angaben des WTB – kurzfristige Verlegungen bitte dort prüfen. Kalendereinträge blocken 4 Stunden ab Spielbeginn.
+  </footer>
+  <div class="toast" id="toast" role="status"></div>
+</main>
+<script>
+const M=[{"d": "2026-10-17", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Hirschlanden 1", "l": "Damen 40 Bezirksstaffel 1 Gr. 070", "k": "Damen 40", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267352.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769513.html"}, {"d": "2026-10-17", "t": "18:00", "h": "TC Ingersheim 1", "g": "TC Freiberg 2", "l": "Herren Kreisstaffel 2 Gr. 013", "k": "Herren II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/aktive/gruppe/g/2267291.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769466.html"}, {"d": "2026-11-07", "t": "13:00", "h": "TC Ditzingen 2", "g": "TC Freiberg 1", "l": "Herren 50 Kreisstaffel 1 Gr. 061", "k": "Herren 50", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267333.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771034.html"}, {"d": "2026-11-07", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Aldingen/R. 1", "l": "Herren 60 Staffelliga Gr. 064", "k": "Herren 60 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267345.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3770408.html"}, {"d": "2026-11-14", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Pleidelsheim 1", "l": "Herren 30 Bezirksstaffel 2 Gr. 038", "k": "Herren 30 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267313.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769459.html"}, {"d": "2026-11-21", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Besigheim 2", "l": "KIDs-Cup U12 Bezirksstaffel 1 Gr. 117", "k": "KIDs-Cup U12", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/jugend/gruppe/g/2267381.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3784213.html"}, {"d": "2026-11-28", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Abstatt 1", "l": "Damen 40 Bezirksstaffel 1 Gr. 070", "k": "Damen 40", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267352.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769513.html"}, {"d": "2026-11-28", "t": "18:00", "h": "TC Freiberg 2", "g": "TC G.-W. Ilsfeld 2", "l": "Herren Kreisstaffel 2 Gr. 013", "k": "Herren II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/aktive/gruppe/g/2267291.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769466.html"}, {"d": "2026-12-05", "t": "18:00", "h": "TC Freiberg 1", "g": "TK Bietigheim 1", "l": "Herren 40 Staffelliga Gr. 046", "k": "Herren 40", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267327.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3770829.html"}, {"d": "2026-12-12", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Murr 1", "l": "Herren 50 Kreisstaffel 1 Gr. 061", "k": "Herren 50", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267333.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771034.html"}, {"d": "2026-12-12", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Schwieberdingen 1", "l": "Herren Bezirksstaffel 2 Gr. 006", "k": "Herren I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/aktive/gruppe/g/2267294.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769695.html"}, {"d": "2026-12-19", "t": "13:00", "h": "TC Freiberg 1", "g": "TA VfL Eberstadt 1", "l": "Damen 40 Bezirksstaffel 1 Gr. 070", "k": "Damen 40", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267352.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769513.html"}, {"d": "2026-12-19", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Sonnenbrunnen Heilbronn 1", "l": "Herren 30 Bezirksstaffel 2 Gr. 038", "k": "Herren 30 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267313.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769459.html"}, {"d": "2027-01-16", "t": "18:00", "h": "TC Freiberg 2", "g": "TA TV Tamm 1898 1", "l": "Herren 30 Kreisstaffel 1 Gr. 040", "k": "Herren 30 II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267310.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3784232.html"}, {"d": "2027-01-23", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Hirschlanden 1", "l": "Herren 50 Kreisstaffel 1 Gr. 061", "k": "Herren 50", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267333.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771034.html"}, {"d": "2027-01-23", "t": "18:00", "h": "TC Freiberg 2", "g": "SPG TSG Hohenlohe 1", "l": "Herren 60 Bezirksstaffel 1 Gr. 065", "k": "Herren 60 II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267344.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3789274.html"}, {"d": "2027-01-30", "t": "13:00", "h": "TC Freiberg 1", "g": "Rielingshäuser-TC-Marbach 1", "l": "KIDs-Cup U12 Bezirksstaffel 1 Gr. 117", "k": "KIDs-Cup U12", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/jugend/gruppe/g/2267381.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3784213.html"}, {"d": "2027-01-30", "t": "18:00", "h": "TC Freiberg 1", "g": "TA TV Neckarweihingen 1", "l": "Herren 30 Bezirksstaffel 2 Gr. 038", "k": "Herren 30 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267313.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769459.html"}, {"d": "2027-02-20", "t": "13:00", "h": "TC Ingersheim 1", "g": "TA TV Tamm 1898 1", "l": "Junioren U15 Kreisstaffel 2 Gr. 100", "k": "Ingersheim U15", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/jugend/gruppe/g/2267383.html", "tu": null}, {"d": "2027-02-20", "t": "18:00", "h": "TC Freiberg 1", "g": "TA TSV Künzelsau 1", "l": "Herren 60 Staffelliga Gr. 064", "k": "Herren 60 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267345.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3770408.html"}, {"d": "2027-02-27", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Möglingen 1", "l": "Juniorinnen U18 Bezirksstaffel 2 Gr. 090", "k": "Juniorinnen U18", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/jugend/gruppe/g/2267363.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771677.html"}, {"d": "2027-02-27", "t": "18:00", "h": "TA TSV Bietigheim 1", "g": "TC Freiberg 1", "l": "Herren 40 Staffelliga Gr. 046", "k": "Herren 40", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267327.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3770829.html"}, {"d": "2027-03-06", "t": "18:00", "h": "TC Ingersheim 1", "g": "TC Freiberg 2", "l": "Herren 30 Kreisstaffel 1 Gr. 040", "k": "Herren 30 II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267310.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3784232.html"}, {"d": "2027-03-13", "t": "13:00", "h": "TC Ludwigsburg 1", "g": "TC Freiberg 1", "l": "Herren 50 Kreisstaffel 1 Gr. 061", "k": "Herren 50", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267333.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771034.html"}, {"d": "2027-03-13", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Hirschlanden 2", "l": "Herren Bezirksstaffel 2 Gr. 006", "k": "Herren I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/aktive/gruppe/g/2267294.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769695.html"}, {"d": "2027-03-20", "t": "18:00", "h": "TC Freiberg 1", "g": "TC Obersulm 1", "l": "Herren 60 Staffelliga Gr. 064", "k": "Herren 60 I", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267345.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3770408.html"}, {"d": "2027-04-10", "t": "13:00", "h": "TC Freiberg 1", "g": "TC Kornwestheim 1", "l": "Juniorinnen U18 Bezirksstaffel 2 Gr. 090", "k": "Juniorinnen U18", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/jugend/gruppe/g/2267363.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3771677.html"}, {"d": "2027-04-10", "t": "18:00", "h": "TC Freiberg 2", "g": "Rielingshäuser-TC-Marbach 2", "l": "Herren Kreisstaffel 2 Gr. 013", "k": "Herren II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/aktive/gruppe/g/2267291.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3769466.html"}, {"d": "2027-04-17", "t": "18:00", "h": "TC Freiberg 2", "g": "TC Tamm Rot-Gold 1", "l": "Herren 30 Kreisstaffel 1 Gr. 040", "k": "Herren 30 II", "gu": "https://www.wtb-tennis.de/spielbetrieb/winter2026-2027/senioren/gruppe/g/2267310.html", "tu": "https://www.wtb-tennis.de/spielbetrieb/vereine/verein/mannschaften/mannschaft/v/20091/m/3784232.html"}];
+const DAYS=["So","Mo","Di","Mi","Do","Fr","Sa"];
+const MONTHS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const ORDER=["Damen 40","Herren I","Herren II","Herren 30 I","Herren 30 II","Herren 40","Herren 50","Herren 60 I","Herren 60 II","Juniorinnen U18","KIDs-Cup U12"];
+const LOC="Tennishalle TC Freiberg, Wasenstr. 37-1, 71691 Freiberg am Neckar";
+const DUR_H=4;
+M.forEach((m,i)=>{m.i=i;const [y,mo,d]=m.d.split("-").map(Number);const [h,mi]=m.t.split(":").map(Number);m.dt=new Date(y,mo-1,d,h,mi);m.end=new Date(m.dt.getTime()+DUR_H*3600e3);});
+let sel="Alle";
+const now=new Date();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtTeam=n=>n.startsWith("TC Freiberg")?`<span class="tcf">${esc(n)}</span>`:esc(n);
+
+/* ---------- iCalendar ---------- */
+const p2=n=>String(n).padStart(2,"0");
+const icsLocal=d=>`${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}T${p2(d.getHours())}${p2(d.getMinutes())}00`;
+const icsUtc=d=>`${d.getUTCFullYear()}${p2(d.getUTCMonth()+1)}${p2(d.getUTCDate())}T${p2(d.getUTCHours())}${p2(d.getUTCMinutes())}${p2(d.getUTCSeconds())}Z`;
+const icsText=s=>String(s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
+function fold(line){const out=[];let cur="";for(const ch of line){if(new TextEncoder().encode(cur+ch).length>73){out.push(cur);cur=" "+ch;}else cur+=ch;}out.push(cur);return out.join("\r\n");}
+const VTZ=["BEGIN:VTIMEZONE","TZID:Europe/Berlin","BEGIN:DAYLIGHT","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","END:DAYLIGHT","BEGIN:STANDARD","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","END:STANDARD","END:VTIMEZONE"];
+function vevent(m){
+  const stamp=icsUtc(new Date());
+  const title=(m.k.startsWith("Ingersheim")?"":"TCF "+m.k+": ")+m.h+" – "+m.g;
+  const desc=`${m.l}\nWTB-Winterhallenrunde 2026/27\nErgebnis & Tabelle: ${m.gu}`;
+  return ["BEGIN:VEVENT",`UID:tcf-halle-${m.d}-${m.t.replace(":","")}-${m.i}@tc-freiberg.de`,`DTSTAMP:${stamp}`,
+    `DTSTART;TZID=Europe/Berlin:${icsLocal(m.dt)}`,`DTEND;TZID=Europe/Berlin:${icsLocal(m.end)}`,
+    `SUMMARY:${icsText(title)}`,`LOCATION:${icsText(LOC)}`,`DESCRIPTION:${icsText(desc)}`,`URL:${m.gu}`,"END:VEVENT"];
+}
+function buildIcs(list,name){
+  const lines=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//TC Freiberg//Hallenbelegung Winter 2026-27//DE","CALSCALE:GREGORIAN","METHOD:PUBLISH",`X-WR-CALNAME:${icsText(name)}`,"X-WR-TIMEZONE:Europe/Berlin",...VTZ];
+  list.forEach(m=>lines.push(...vevent(m)));
+  lines.push("END:VCALENDAR");
+  return lines.map(fold).join("\r\n")+"\r\n";
+}
+function download(list,file,name){
+  const blob=new Blob([buildIcs(list,name)],{type:"text/calendar;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=file;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  toast(list.length===1?"Termin heruntergeladen – Datei öffnen, um ihn einzutragen":`${list.length} Termine heruntergeladen – Datei öffnen, um sie einzutragen`);
+}
+const slug=s=>s.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+let tt;function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),3500);}
+
+/* ---------- UI ---------- */
+const fz=document.getElementById("filters");
+["Alle",...ORDER].forEach(t=>{const b=document.createElement("button");b.className="chip";b.textContent=t;b.setAttribute("aria-pressed",t===sel);b.onclick=()=>{sel=t;[...fz.children].forEach(c=>c.setAttribute("aria-pressed",c.textContent===sel));render();};fz.appendChild(b);});
+document.getElementById("hidePast").onchange=render;
+document.getElementById("list").addEventListener("click",e=>{const b=e.target.closest("[data-ics]");if(!b)return;const m=M[+b.dataset.ics];download([m],`tcf-${m.d}-${slug(m.k)}.ics`,"TC Freiberg Halle");});
+
+function render(){
+  const hide=document.getElementById("hidePast").checked;
+  const pool=sel==="Alle"?M:M.filter(m=>m.k===sel);
+  const upcoming=pool.filter(m=>m.end>=now);
+  const nxt=upcoming[0];
+  const ns=document.getElementById("next");
+  if(nxt){const dd=nxt.dt;
+    ns.innerHTML=`<div class="ball" aria-hidden="true"></div><div class="lbl">Nächstes Spiel in der Halle${sel!=="Alle"?" · "+esc(sel):""}</div>
+    <div class="when">${DAYS[dd.getDay()]}, ${dd.getDate()}. ${MONTHS[dd.getMonth()]} · ${nxt.t} Uhr</div>
+    <div class="who">${esc(nxt.h)} – ${esc(nxt.g)}</div><div class="lg">${esc(nxt.l)}</div>`;ns.hidden=false;
+  } else ns.hidden=true;
+
+  const tb=document.getElementById("teambar");
+  if(sel!=="Alle"){
+    const tu=pool[0].tu;
+    const n=upcoming.length;
+    tb.innerHTML=`<p>Hier stehen nur die Spiele in unserer Halle. Auswärtsspiele findest du auf der Mannschaftsseite beim WTB.</p>
+      ${n?`<button class="btn" id="teamIcs">Alle ${n} ${n===1?"Termin":"Termine"} in den Kalender</button>`:""}
+      ${tu?`<a href="${tu}" target="_blank" rel="noopener">Mannschaftsseite beim WTB</a>`:""}`;
+    tb.hidden=false;
+    const b=document.getElementById("teamIcs");
+    if(b)b.onclick=()=>download(upcoming,`tcf-halle-${slug(sel)}.ics`,`TCF ${sel} – Heimspiele Halle`);
+  } else tb.hidden=true;
+
+  let rows=pool;
+  if(hide) rows=rows.filter(m=>m.end>=now);
+  document.getElementById("count").textContent=`${rows.length} ${rows.length===1?"Begegnung":"Begegnungen"}`;
+  const list=document.getElementById("list");
+  if(!rows.length){list.innerHTML=`<p class="empty">Für diese Auswahl stehen keine weiteren Spiele in der Halle an. Blende vergangene Spiele ein, um die ganze Saison mit Ergebnissen zu sehen.</p>`;return;}
+  let html="",cur="";
+  rows.forEach(m=>{
+    const key=m.dt.getFullYear()+"-"+m.dt.getMonth();
+    if(key!==cur){if(cur)html+="</ul>";html+=`<h2>${MONTHS[m.dt.getMonth()]} ${m.dt.getFullYear()}</h2><ul>`;cur=key;}
+    const tcf=m.h.startsWith("TC Freiberg")||m.g.startsWith("TC Freiberg");
+    const past=m.end<now;
+    const cls=["m",past?"past":"",nxt&&m===nxt?"isnext":""].join(" ");
+    html+=`<li class="${cls}"><div class="d"><span class="day">${DAYS[m.dt.getDay()]}</span><span class="num">${m.dt.getDate()}.${m.dt.getMonth()+1}.</span><span class="tm">${m.t}</span></div>
+      <div><div class="teams">${fmtTeam(m.h)} – ${fmtTeam(m.g)}${tcf?"":'<span class="tag">ohne TCF</span>'}</div><div class="meta">${esc(m.l)}</div>
+      <div class="acts"><a href="${m.gu}" target="_blank" rel="noopener">${past?"Ergebnis & Tabelle":"Tabelle beim WTB"}</a>${past?"":`<button type="button" data-ics="${m.i}">In Kalender</button>`}</div></div></li>`;
+  });
+  list.innerHTML=html+"</ul>";
+}
+render();
+</script>
+</body>
+</html>
